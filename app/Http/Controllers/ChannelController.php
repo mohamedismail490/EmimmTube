@@ -2,11 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Channels\UpdateRequest;
 use App\Models\Channel;
 use Illuminate\Http\Request;
 
 class ChannelController extends Controller
 {
+
+    public function __construct()
+    {
+        $this -> middleware('auth')->only('store','update','destroy');
+    }
+
     /**
      * Display a listing of the resource.
      *
@@ -55,16 +62,21 @@ class ChannelController extends Controller
         //
     }
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function update(Request $request, $id)
+
+    public function update(UpdateRequest $request, Channel $channel)
     {
-        //
+        if ($request->hasFile('image')) {
+            $channel -> clearMediaCollection('images');
+            $channel -> addMediaFromRequest('image')
+                ->toMediaCollection('images');
+        }
+
+        $channel -> update([
+            'name' => $request -> input('name'),
+            'description' => $request -> input('description')
+        ]);
+
+        return back();
     }
 
     /**
