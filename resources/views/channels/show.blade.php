@@ -58,7 +58,7 @@
                                 <div class="form-group">
                                     <h4 class="text-center">{{ $channel -> name }}</h4>
                                     <div class="text-center">
-                                        <subscribe-button :channel="{{ $channel }}" :initial-subscriptions="{{ $channel -> subscriptions }}" inline-template>
+                                        <subscribe-button :initial-channel="{{ $channel }}" inline-template>
                                             <button type="button" @click.prevent="toggleSubscription" class="btn " :class="owner ? 'btn-dark' : (subscribed ? 'btn-danger' : 'btn-success')">
                                                 @{{ owner ? '' : (subscribed ? 'Unsubscribe' : 'Subscribe') }} @{{ count }} @{{ owner ? 'Subscribers' : '' }}
                                             </button>

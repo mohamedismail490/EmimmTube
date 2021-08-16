@@ -1,61 +1,59 @@
 import numeral from 'numeral';
 Vue.component('subscribe-button', {
     props: {
-        channel: {
+        initialChannel: {
           type: Object,
           required: true,
           default: () => ({})
-        },
-        initialSubscriptions: {
-            type: Array,
-            required: true,
-            default: () => []
         }
     },
     data() {
         return {
-            subscriptions: this.initialSubscriptions
+            channel: this.initialChannel
         }
     },
     computed: {
         subscribed() {
-            if (!__auth() || (this.channel.user_id === __auth().id)) return false;
-            return !!this.subscription
+            return this.channel.is_subscribed;
         },
         owner() {
-            return !!(__auth() && (this.channel.user_id === __auth().id));
+            return this.channel.is_owner;
         },
         count() {
-            return numeral(this.subscriptions.length).format('0a');
+            return numeral(this.channel.subscriptions_count).format('0a');
         },
         subscription() {
-            if (!__auth()) return null;
-            return this.subscriptions.find(subscription => subscription.user_id === __auth().id)
+            return this.channel.user_subscription;
         }
     },
     methods: {
         toggleSubscription() {
-            if (!__auth()) {
-                return alert('Please Login to Subscribe');
-            }
-
-            if (this.owner) {
-                return alert('You can\'t Subscribe to Your Channel');
-            }
-
             if (this.subscribed) {
                 axios.delete(`/channels/${this.channel.id}/subscriptions/${this.subscription.id}`)
-                    .then(() => {
-                        this.subscriptions = this.subscriptions.filter(sub => sub.id !== this.subscription.id)
-                    });
+                    .then(res => {
+                        this.channel = res.data.channel
+                    })
+                    .catch(err => {
+                        if ((typeof (err.response.status) !== "undefined") && (err.response.status === 401)) {
+                            return alert('Please Login to Unsubscribe');
+                        }
+                        return alert('Something Wrong Happened! Please, Try Again.');
+                    })
             }else {
                 axios.post(`/channels/${this.channel.id}/subscriptions`)
                     .then(res => {
-                        this.subscriptions = [
-                            ...this.subscriptions,
-                            res.data
-                        ]
-                    });
+                        if (res.data.status){
+                            this.channel = res.data.channel
+                        }else {
+                            return alert(res.data.message);
+                        }
+                    })
+                    .catch(err => {
+                        if ((typeof (err.response.status) !== "undefined") && (err.response.status === 401)) {
+                            return alert('Please Login to Subscribe');
+                        }
+                        return alert('Something Wrong Happened! Please, Try Again.');
+                    })
             }
         }
     }

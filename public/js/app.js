@@ -1906,80 +1906,63 @@ window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var numeral__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! numeral */ "./node_modules/numeral/numeral.js");
 /* harmony import */ var numeral__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(numeral__WEBPACK_IMPORTED_MODULE_0__);
-function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _unsupportedIterableToArray(arr) || _nonIterableSpread(); }
-
-function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
-
-function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
-
-function _iterableToArray(iter) { if (typeof Symbol !== "undefined" && iter[Symbol.iterator] != null || iter["@@iterator"] != null) return Array.from(iter); }
-
-function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) return _arrayLikeToArray(arr); }
-
-function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
-
 
 Vue.component('subscribe-button', {
   props: {
-    channel: {
+    initialChannel: {
       type: Object,
       required: true,
       "default": function _default() {
         return {};
       }
-    },
-    initialSubscriptions: {
-      type: Array,
-      required: true,
-      "default": function _default() {
-        return [];
-      }
     }
   },
   data: function data() {
     return {
-      subscriptions: this.initialSubscriptions
+      channel: this.initialChannel
     };
   },
   computed: {
     subscribed: function subscribed() {
-      if (!__auth() || this.channel.user_id === __auth().id) return false;
-      return !!this.subscription;
+      return this.channel.is_subscribed;
     },
     owner: function owner() {
-      return !!(__auth() && this.channel.user_id === __auth().id);
+      return this.channel.is_owner;
     },
     count: function count() {
-      return numeral__WEBPACK_IMPORTED_MODULE_0___default()(this.subscriptions.length).format('0a');
+      return numeral__WEBPACK_IMPORTED_MODULE_0___default()(this.channel.subscriptions_count).format('0a');
     },
     subscription: function subscription() {
-      if (!__auth()) return null;
-      return this.subscriptions.find(function (subscription) {
-        return subscription.user_id === __auth().id;
-      });
+      return this.channel.user_subscription;
     }
   },
   methods: {
     toggleSubscription: function toggleSubscription() {
       var _this = this;
 
-      if (!__auth()) {
-        return alert('Please Login to Subscribe');
-      }
-
-      if (this.owner) {
-        return alert('You can\'t Subscribe to Your Channel');
-      }
-
       if (this.subscribed) {
-        axios["delete"]("/channels/".concat(this.channel.id, "/subscriptions/").concat(this.subscription.id)).then(function () {
-          _this.subscriptions = _this.subscriptions.filter(function (sub) {
-            return sub.id !== _this.subscription.id;
-          });
+        axios["delete"]("/channels/".concat(this.channel.id, "/subscriptions/").concat(this.subscription.id)).then(function (res) {
+          _this.channel = res.data.channel;
+        })["catch"](function (err) {
+          if (typeof err.response.status !== "undefined" && err.response.status === 401) {
+            return alert('Please Login to Unsubscribe');
+          }
+
+          return alert('Something Wrong Happened! Please, Try Again.');
         });
       } else {
         axios.post("/channels/".concat(this.channel.id, "/subscriptions")).then(function (res) {
-          _this.subscriptions = [].concat(_toConsumableArray(_this.subscriptions), [res.data]);
+          if (res.data.status) {
+            _this.channel = res.data.channel;
+          } else {
+            return alert(res.data.message);
+          }
+        })["catch"](function (err) {
+          if (typeof err.response.status !== "undefined" && err.response.status === 401) {
+            return alert('Please Login to Subscribe');
+          }
+
+          return alert('Something Wrong Happened! Please, Try Again.');
         });
       }
     }
