@@ -5,7 +5,12 @@
         <div class="row justify-content-center">
             <div class="col-md-8">
                 <div class="card">
-                    <div class="card-header">{{ $channel -> name }}</div>
+                    <div class="card-header {{$channel->editable() ? 'd-flex justify-content-between' : ''}}">
+                        {{ $channel -> name }}
+                        @if($channel -> editable())
+                            <a href="{{ route('channels.upload', $channel->id) }}">Upload Videos</a>
+                        @endif
+                    </div>
 
                     <div class="card-body">
                         @if($channel -> editable())

@@ -24,7 +24,7 @@ class UpdateRequest extends FormRequest
     public function rules()
     {
         $rules = [
-            'name' => 'required|max:255',
+            'name' => 'required|max:40',
             'description' => 'max:1000'
         ];
         if ($this->hasFile('image')){
