@@ -2,7 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Channels\UploadVideoRequest;
+use App\Jobs\Videos\ConvertingForStreaming;
+use App\Jobs\Videos\CreateVideoThumbnail;
 use App\Models\Channel;
+use App\Models\Video;
 use Illuminate\Http\Request;
 
 class VideoController extends Controller
@@ -26,15 +30,17 @@ class VideoController extends Controller
         //
     }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
-    public function store(Request $request)
+
+    /** @noinspection PhpParamsInspection */
+    public function store(UploadVideoRequest $request, Channel $channel)
     {
-        //
+        $video = $channel->videos()->create([
+            'title' => $request -> input('title'),
+            'path' => $request -> file('video') -> store("channels/{$channel->id}")
+        ]);
+        $this->dispatch(new CreateVideoThumbnail($video));
+        $this->dispatch(new ConvertingForStreaming($video));
+        return $video;
     }
 
     /**

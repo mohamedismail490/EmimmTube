@@ -1916,13 +1916,30 @@ Vue.component('channel-uploads', {
   },
   data: function data() {
     return {
-      selected: false
+      selected: false,
+      videos: [],
+      progress: {}
     };
   },
   methods: {
     upload: function upload() {
+      var _this = this;
+
       this.selected = true;
-      var videos = this.$refs.videos.files;
+      this.videos = Array.from(this.$refs.videos.files);
+      var uploaders = this.videos.map(function (video) {
+        var form = new FormData();
+        _this.progress[video.name] = 0;
+        form.append('video', video);
+        form.append('title', video.name);
+        return axios.post("/channels/".concat(_this.channel.id, "/videos/upload"), form, {
+          onUploadProgress: function onUploadProgress(event) {
+            _this.progress[video.name] = Math.ceil(event.loaded / event.total * 100);
+
+            _this.$forceUpdate();
+          }
+        });
+      });
     }
   }
 });
