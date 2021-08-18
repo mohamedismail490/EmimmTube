@@ -48,11 +48,14 @@ class VideoController extends Controller
         Channel::where('id', $channel->id)
             ->where('user_id', auth()->user()->id)
             ->firstOrFail();
-        $channelVideo = Video::where('id', $video->id)
+        Video::where('id', $video->id)
             ->where('channel_id', $channel->id)
             ->firstOrFail();
 
-        return $channelVideo;
+        if (request()->wantsJson()){
+            return $video;
+        }
+        return view('channels.videos.show', compact('video'));
     }
 
     /**
