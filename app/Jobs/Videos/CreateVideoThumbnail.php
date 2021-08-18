@@ -35,9 +35,11 @@ class CreateVideoThumbnail implements ShouldQueue
      */
     public function handle()
     {
-        FFMpeg::fromDisk('local')
-            ->open($this->video->path)
-            ->getFrameFromSeconds(3)
+        $videoFile = FFMpeg::fromDisk('local')
+            ->open($this->video->path);
+        $duration = $videoFile->getDurationInSeconds();
+        $thumbnailFrameSecond = (int) ($duration / 2);
+        $videoFile->getFrameFromSeconds($thumbnailFrameSecond)
             ->export()
             ->toDisk('local')
             ->save("public/thumbnails/{$this->video->id}.png");

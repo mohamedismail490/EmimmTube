@@ -43,15 +43,16 @@ class VideoController extends Controller
         return $video;
     }
 
-    /**
-     * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function show($id)
+    public function show(Channel $channel, Video $video)
     {
-        //
+        Channel::where('id', $channel->id)
+            ->where('user_id', auth()->user()->id)
+            ->firstOrFail();
+        $channelVideo = Video::where('id', $video->id)
+            ->where('channel_id', $channel->id)
+            ->firstOrFail();
+
+        return $channelVideo;
     }
 
     /**
