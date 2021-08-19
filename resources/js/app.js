@@ -1,4 +1,5 @@
 require('./bootstrap');
+require('./videojs');
 
 window.Vue = require('vue').default;
 

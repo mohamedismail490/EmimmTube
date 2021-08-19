@@ -45,9 +45,6 @@ class VideoController extends Controller
 
     public function show(Channel $channel, Video $video)
     {
-        Channel::where('id', $channel->id)
-            ->where('user_id', auth()->user()->id)
-            ->firstOrFail();
         Video::where('id', $video->id)
             ->where('channel_id', $channel->id)
             ->firstOrFail();
@@ -69,16 +66,13 @@ class VideoController extends Controller
         //
     }
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function update(Request $request, $id)
+
+    public function updateViews(Channel $channel, Video $video)
     {
-        //
+        Video::where('id', $video->id)
+            ->where('channel_id', $channel->id)
+            ->firstOrFail();
+        $video->increment('views');
     }
 
     /**
