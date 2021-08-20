@@ -4773,46 +4773,88 @@ Vue.component('channel-uploads', {
     upload: function upload() {
       var _this = this;
 
-      this.selected = true;
-      this.videos = Array.from(this.$refs.videos.files);
-      var uploaders = this.videos.map(function (video) {
-        var form = new FormData();
-        _this.progress[video.name] = 0;
-        form.append('video', video);
-        form.append('title', video.name);
-        return axios.post("/channels/".concat(_this.channel.id, "/videos/upload"), form, {
-          onUploadProgress: function onUploadProgress(event) {
-            _this.progress[video.name] = Math.ceil(event.loaded / event.total * 100);
+      // Validate all uploaded videos from the Frontend
+      var isVideo = true;
+      var videosArray = Array.from(this.$refs.videos.files);
+      videosArray.forEach(function (file) {
+        var type = file.type;
+        var mimeArr = type.split("/");
 
-            _this.$forceUpdate();
-          }
-        }).then(function (_ref) {
-          var data = _ref.data;
-          _this.uploads = [].concat(_toConsumableArray(_this.uploads), [data]);
-        });
+        if (mimeArr[0] !== "video") {
+          isVideo = false;
+        }
       });
-      axios.all(uploaders).then(function () {
-        _this.videos = _this.uploads;
 
-        _this.videos.forEach(function (video) {
-          _this.intervals[video.id] = setInterval(function () {
-            axios.get("/channels/".concat(_this.channel.id, "/videos/").concat(video.id)).then(function (_ref2) {
-              var data = _ref2.data;
+      if (!isVideo) {
+        return alert("All Uploaded Files must be a valid Video Files!");
+      } // Make a request to validate all uploaded videos before any uploading from backend
 
-              if (data.percentage === 100) {
-                clearInterval(_this.intervals[video.id]);
-              }
 
-              _this.videos = _this.videos.map(function (v) {
-                if (v.id === data.id) {
-                  return data;
+      var formData = new FormData();
+
+      if (videosArray.length > 0) {
+        for (var i = 0; i < videosArray.length; i++) {
+          formData.append('videos[]', videosArray[i]);
+        }
+      }
+
+      return axios.post("/channels/".concat(this.channel.id, "/videos/validate"), formData).then(function () {
+        // all Videos is validated and the upload process begins
+        _this.selected = true;
+        _this.videos = videosArray;
+
+        var uploaders = _this.videos.map(function (video) {
+          var form = new FormData();
+          _this.progress[video.name] = 0;
+          form.append('video', video);
+          form.append('title', video.name);
+          return axios.post("/channels/".concat(_this.channel.id, "/videos/upload"), form, {
+            onUploadProgress: function onUploadProgress(event) {
+              _this.progress[video.name] = Math.ceil(event.loaded / event.total * 100);
+
+              _this.$forceUpdate();
+            }
+          }).then(function (_ref) {
+            var data = _ref.data;
+            _this.uploads = [].concat(_toConsumableArray(_this.uploads), [data]);
+          });
+        }); // tracking the video processing progress.
+
+
+        axios.all(uploaders).then(function () {
+          _this.videos = _this.uploads;
+
+          _this.videos.forEach(function (video) {
+            _this.intervals[video.id] = setInterval(function () {
+              axios.get("/channels/".concat(_this.channel.id, "/videos/").concat(video.id)).then(function (_ref2) {
+                var data = _ref2.data;
+
+                if (data.percentage === 100) {
+                  clearInterval(_this.intervals[video.id]);
                 }
 
-                return v;
+                _this.videos = _this.videos.map(function (v) {
+                  if (v.id === data.id) {
+                    return data;
+                  }
+
+                  return v;
+                });
               });
-            });
-          }, 3000);
+            }, 3000);
+          });
         });
+      })["catch"](function (err) {
+        if (typeof err.response.status !== "undefined" && err.response.status === 422 && typeof err.response.data.errors !== "undefined") {
+          for (var _i = 0; _i < videosArray.length; _i++) {
+            if (err.response.data.errors["videos." + _i]) {
+              _this.selected = false;
+              return alert("All Uploaded Files must be a valid Video Files!");
+            }
+          }
+        } else {
+          return alert("Something wrong happened! please, try again.");
+        }
       });
     }
   }

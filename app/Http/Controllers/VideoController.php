@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Channels\UploadVideoRequest;
+use App\Http\Requests\Videos\ValidateVideosTypesRequest;
 use App\Jobs\Videos\ConvertingForStreaming;
 use App\Jobs\Videos\CreateVideoThumbnail;
 use App\Models\Channel;
@@ -30,6 +31,9 @@ class VideoController extends Controller
         //
     }
 
+    public function validateVideosTypes(ValidateVideosTypesRequest $request, Channel $channel) {
+        return true;
+    }
 
     /** @noinspection PhpParamsInspection */
     public function store(UploadVideoRequest $request, Channel $channel)
@@ -45,9 +49,9 @@ class VideoController extends Controller
 
     public function show(Channel $channel, Video $video)
     {
-        Video::where('id', $video->id)
-            ->where('channel_id', $channel->id)
-            ->firstOrFail();
+        if (!$video->isChannelVideo($channel->id)){
+            abort(404);
+        }
 
         if (request()->wantsJson()){
             return $video;
@@ -69,9 +73,9 @@ class VideoController extends Controller
 
     public function updateViews(Channel $channel, Video $video)
     {
-        Video::where('id', $video->id)
-            ->where('channel_id', $channel->id)
-            ->firstOrFail();
+        if (!$video->isChannelVideo($channel->id)){
+            abort(404);
+        }
         $video->increment('views');
     }
 

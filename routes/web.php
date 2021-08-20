@@ -32,6 +32,7 @@ Route::group(['prefix' => 'channels', 'middleware' => ['auth']], function () {
     Route::resource('{channel}/subscriptions', SubscriptionController::class)->only(['store','destroy']);
     Route::group(['prefix' => '{channel}/videos'], function () {
         Route::get('upload', [VideoController::class, 'index'])->name('channels.upload');
+        Route::post('validate', [VideoController::class, 'validateVideosTypes']);
         Route::post('upload', [VideoController::class, 'store']);
         Route::get('{video}', [VideoController::class, 'show'])->withoutMiddleware('auth');
         Route::put('{video}', [VideoController::class, 'updateViews'])->withoutMiddleware('auth');
