@@ -36,6 +36,7 @@ Route::group(['prefix' => 'channels', 'middleware' => ['auth']], function () {
         Route::post('upload', [VideoController::class, 'store']);
         Route::get('{video}', [VideoController::class, 'show'])->withoutMiddleware('auth');
         Route::put('{video}', [VideoController::class, 'updateViews'])->withoutMiddleware('auth');
+        Route::put('update/{video}', [VideoController::class, 'update'])->name('channels.videos.update');
     });
 
 

@@ -25,7 +25,7 @@ class UploadVideoRequest extends FormRequest
     {
         return [
             'title' => 'max:255',
-            'video' => 'required|mimetypes:video/x-ms-asf,video/x-flv,video/mp4,video/x-matroska,video/MP2T,video/3gpp,video/quicktime,video/x-msvideo,video/x-ms-wmv,video/avi',
+            'video' => 'required|mimetypes:video/x-ms-asf,video/x-flv,video/mp4,video/x-matroska,video/MP2T,video/3gpp,video/quicktime,video/x-msvideo,video/x-ms-wmv,video/avi'/* ,video/vnd.dlna.mpeg-tts,application/octet-stream */,
             'description' => 'max:1000'
         ];
     }

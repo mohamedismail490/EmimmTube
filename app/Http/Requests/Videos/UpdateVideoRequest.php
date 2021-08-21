@@ -4,7 +4,7 @@ namespace App\Http\Requests\Videos;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class ValidateVideosTypesRequest extends FormRequest
+class UpdateVideoRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -13,7 +13,7 @@ class ValidateVideosTypesRequest extends FormRequest
      */
     public function authorize()
     {
-        return $this->channel->user_id === auth() -> user() -> id;
+        return $this->video->channel->user_id === auth() -> user() -> id;
     }
 
     /**
@@ -24,7 +24,8 @@ class ValidateVideosTypesRequest extends FormRequest
     public function rules()
     {
         return [
-            'videos.*' => 'required|mimetypes:video/x-ms-asf,video/x-flv,video/mp4,video/x-matroska,video/MP2T,video/3gpp,video/quicktime,video/x-msvideo,video/x-ms-wmv,video/avi'/* ,video/vnd.dlna.mpeg-tts,application/octet-stream */
+            'title' => 'required|max:255',
+            'description' => 'required|max:1000'
         ];
     }
 }

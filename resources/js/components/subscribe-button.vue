@@ -1,10 +1,19 @@
+<template>
+    <div>
+        <button type="button" @click.prevent="toggleSubscription" class="btn " :class="owner ? 'btn-dark' : (subscribed ? 'btn-danger' : 'btn-success')">
+            {{ subBtn }}
+        </button>
+    </div>
+</template>
+
+<script>
 import numeral from 'numeral';
-Vue.component('subscribe-button', {
+export default {
     props: {
         initialChannel: {
-          type: Object,
-          required: true,
-          default: () => ({})
+            type: Object,
+            required: true,
+            default: () => ({})
         }
     },
     data() {
@@ -24,6 +33,9 @@ Vue.component('subscribe-button', {
         },
         subscription() {
             return this.channel.user_subscription;
+        },
+        subBtn() {
+            return (this.owner ? '' : (this.subscribed ? 'Unsubscribe ' : 'Subscribe ')) + this.count + (this.owner ? ' Subscribers' : '')
         }
     },
     methods: {
@@ -57,4 +69,5 @@ Vue.component('subscribe-button', {
             }
         }
     }
-})
+}
+</script>

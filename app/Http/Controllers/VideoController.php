@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Channels\UploadVideoRequest;
+use App\Http\Requests\Videos\UpdateVideoRequest;
 use App\Http\Requests\Videos\ValidateVideosTypesRequest;
 use App\Jobs\Videos\ConvertingForStreaming;
 use App\Jobs\Videos\CreateVideoThumbnail;
@@ -77,6 +78,20 @@ class VideoController extends Controller
             abort(404);
         }
         $video->increment('views');
+    }
+
+    public function update(UpdateVideoRequest $request, Channel $channel, Video $video)
+    {
+        if (!$video->isChannelVideo($channel->id)){
+            abort(403, 'You aren\'t Authorized To Update');
+        }
+
+        $video->update([
+            'title' => $request -> input('title'),
+            'description' => $request -> input('description')
+        ]);
+
+        return back();
     }
 
     /**

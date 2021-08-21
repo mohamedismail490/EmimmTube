@@ -10,7 +10,7 @@ class Model extends BaseModel
 {
     public $incrementing = false;
     protected $guarded = [];
-    protected $appends = ['created_since'];
+    protected $appends = ['created_since','formatted_created_at'];
 
     protected static function boot() {
         parent::boot();
@@ -28,5 +28,8 @@ class Model extends BaseModel
     }
     public function getCreatedSinceAttribute(){
         return Carbon::parse($this->created_at)->diffForHumans();
+    }
+    public function getFormattedCreatedAtAttribute(){
+        return Carbon::parse($this->created_at)->toFormattedDateString();
     }
 }
