@@ -25,7 +25,7 @@ class UpdateVideoRequest extends FormRequest
     {
         return [
             'title' => 'required|max:255',
-            'description' => 'required|max:1000'
+            'description' => 'max:1000'
         ];
     }
 }

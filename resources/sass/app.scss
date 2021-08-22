@@ -53,3 +53,14 @@
     margin-left: -1.5em !important;
     margin-top: -0.75em !important;
 }
+
+.thumbs-up, .thumbs-down {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    fill: currentColor;
+}
+
+.thumb-up-active, .thumb-down-active {
+    color: #3EA6FF;
+}

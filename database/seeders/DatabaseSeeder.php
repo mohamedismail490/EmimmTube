@@ -5,6 +5,8 @@ namespace Database\Seeders;
 use App\Models\Channel;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Models\Video;
+use App\Models\Vote;
 use Database\Factories\ChannelFactory;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Seeder;
@@ -50,6 +52,14 @@ class DatabaseSeeder extends Seeder
 
         Subscription::factory(10000)->create([
             'channel_id' => $channel2->id
+        ]);
+
+        Video::query()->find('fe3c8612-edc7-44ea-a9f1-e6826dacbd3b')->votes()->factory(5000)->create([
+            'type' => 'up'
+        ]);
+
+        Video::query()->find('fe3c8612-edc7-44ea-a9f1-e6826dacbd3b')->votes()->factory(200)->create([
+            'type' => 'down'
         ]);
     }
 }

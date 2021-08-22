@@ -10,6 +10,10 @@ Vue.component('subscribe-button',
     require('./components/subscribe-button').default
 )
 
+Vue.component('votes',
+    require('./components/votes').default
+)
+
 
 require('./components/channel-uploads');
 

@@ -2,6 +2,7 @@ var player = videojs('video', {
     aspectRatio: "640:360",
     playbackRates: [1, 1.5, 2],
 });
+
 var channelId = document.getElementById('video').dataset.channelid;
 var videoId   = document.getElementById('video').dataset.videoid;
 var isPlayed  = false;
@@ -20,9 +21,9 @@ player.on("play", function () {
         timer = window.setInterval(function() {
             totalTime += 1;
         }, 1000);
-
     }
 })
+
 player.on("pause", function () {
     isPlayed = false;
     isPaused = true;
@@ -36,12 +37,9 @@ player.on("pause", function () {
 
 player.on('timeupdate', function () {
     var percentagePlayed = Math.ceil(((totalTime / player.duration()) * 100))
-    if ((percentagePlayed > 10) && (!isViewed)){
+    if ((percentagePlayed > 15) && (!isViewed)){
+        isViewed = true;
         axios.put('/channels/' + channelId + '/videos/' + videoId)
-            .then(function () {
-                isViewed = true;
-            })
+            .catch(function (error) {})
     }
 });
-
-
