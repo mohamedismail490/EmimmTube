@@ -10002,6 +10002,45 @@ h3 {
     border-color: #dee2e6;
   }
 }
+.navbar-dark {
+  background-color: #202020 !important;
+}
+
+.dropdown-menu {
+  background-color: #202020 !important;
+}
+
+body, input, textarea, button.page-link, .video-card {
+  background-color: #181818 !important;
+  color: white !important;
+}
+
+.card, .dropdown-item {
+  background-color: #202020;
+  color: #fff;
+}
+
+.dropdown-item:hover {
+  background-color: #373737;
+  color: #fff;
+}
+
+a {
+  color: #52b2ff;
+}
+
+a:hover {
+  color: #0085ff;
+}
+
+.views-info {
+  color: #777 !important;
+}
+
+.release-info {
+  color: #aaa !important;
+}
+
 .btn-info {
   color: #fff;
 }
@@ -10045,13 +10084,57 @@ h3 {
   margin-top: -0.75em !important;
 }
 
+hr {
+  background-color: #2d2d2d !important;
+}
+
+::-moz-placeholder {
+  color: white !important;
+  opacity: 0.5 !important;
+  /* Firefox */
+}
+
+:-ms-input-placeholder {
+  color: white !important;
+  opacity: 0.5 !important;
+  /* Firefox */
+}
+
+::placeholder {
+  color: white !important;
+  opacity: 0.5 !important;
+  /* Firefox */
+}
+
+:-ms-input-placeholder {
+  /* Internet Explorer 10-11 */
+  color: white !important;
+}
+
+.emimmtube-logo {
+  fill: #fff !important;
+}
+
 .thumbs-up, .thumbs-down {
-  width: 20px;
-  height: 20px;
+  width: 25px;
+  height: 25px;
   cursor: pointer;
+  color: #909090;
   fill: currentColor;
+}
+
+.thumbs-down {
+  transform: scaleX(-1);
 }
 
 .thumb-up-active, .thumb-down-active {
   color: #3EA6FF;
+}
+
+.w-full {
+  width: 100% !important;
+}
+
+.w-80 {
+  width: 80% !important;
 }

@@ -8,7 +8,7 @@
                     <div class="card-header {{$channel->editable() ? 'd-flex justify-content-between' : ''}}">
                         {{ $channel -> name }}
                         @if($channel -> editable())
-                            <a href="{{ route('channels.upload', $channel->id) }}">Upload Videos</a>
+                            <a href="{{ route('channels.upload', $channel->id) }}" style="text-decoration: none;">Upload Videos</a>
                         @endif
                     </div>
 
@@ -75,6 +75,7 @@
                                 <div class="form-group">
                                     <label for="name" class="form-control-label">Name</label>
                                     <input id="name" name="name" value="{{ $channel -> name }}" type="text"
+                                           placeholder="Enter Channel Name"
                                            class="form-control">
                                     @error("name")
                                     <small class="text-danger">{{$message}}</small>
@@ -83,6 +84,7 @@
                                 <div class="form-group">
                                     <label for="description" class="form-control-label">Description</label>
                                     <textarea name="description" id="description" rows="5"
+                                              placeholder="Enter Channel Description"
                                               class="form-control">{!! $channel -> description !!}</textarea>
                                     @error("description")
                                     <small class="text-danger">{{$message}}</small>

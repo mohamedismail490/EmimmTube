@@ -69,5 +69,31 @@ class User extends Authenticatable
         return $this->hasOne(Channel::class);
     }
 
+    public function comments() {
+        return $this->hasMany(Comment::class);
+    }
+
+
+    public function toggleVote($entity, $type) {
+        $vote = $entity -> votes() -> where('user_id', $this -> id) -> first();
+        if ($vote) {
+            if ($vote->type === $type) {
+                $vote->delete();
+            }else {
+                $vote -> update([
+                    'type' => $type
+                ]);
+            }
+        } else {
+            $entity -> votes() -> create([
+                'user_id' => $this -> id,
+                'type'    => $type
+            ]);
+        }
+        return (object) [
+            'status' => true,
+            'entity' => $entity->refresh()
+        ];
+    }
 
 }

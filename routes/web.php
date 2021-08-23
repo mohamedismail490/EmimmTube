@@ -6,6 +6,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ChannelController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\VideoController;
+use App\Http\Controllers\VoteController;
 
 /*
 |--------------------------------------------------------------------------
@@ -37,7 +38,8 @@ Route::group(['prefix' => 'channels', 'middleware' => ['auth']], function () {
         Route::get('{video}', [VideoController::class, 'show'])->withoutMiddleware('auth');
         Route::put('{video}', [VideoController::class, 'updateViews'])->withoutMiddleware('auth');
         Route::put('update/{video}', [VideoController::class, 'update'])->name('channels.videos.update');
+
+        //Votes
+        Route::post('votes/{video}/{type}', [VoteController::class, 'vote']);
     });
-
-
 });
