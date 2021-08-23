@@ -8,7 +8,7 @@ class Video extends Model
 {
     use HasFactory;
 
-    protected $appends = ['is_up_voted','is_down_voted','up_votes_count','down_votes_count','user_vote'];
+    protected $appends = ['is_owner','is_up_voted','is_down_voted','up_votes_count','down_votes_count','user_vote'];
     protected $with    = ['channel'];
 
     public function channel() {
@@ -24,6 +24,9 @@ class Video extends Model
     }
 
 
+    public function getIsOwnerAttribute() {
+        return auth()->check() ? ($this->channel->user_id === auth()->user()->id) : false;
+    }
     public function getIsUpVotedAttribute() {
         if (auth()->check()) {
             $upVote = $this->votes()

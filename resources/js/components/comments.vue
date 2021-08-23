@@ -15,12 +15,12 @@
                     <Avatar :username="comment.user && comment.user.name ? comment.user.name : 'Unknown User'" :size="30" class="mr-3" :src="comment.user && comment.user.channel ? comment.user.channel.channel_image : ''"></Avatar>
                     <div class="media-body">
                         <h6 class="mt-0">{{ comment.user && comment.user.name ? comment.user.name : 'Unknown User'}}</h6>
-                        <small>{{ comment.body }}</small>
+                        <span>{{ comment.body }}</span>
 
-                        <div class="d-flex">
-                            <votes :initial_entity="video"></votes>
-                            <button class="btn btn-sm ml-2 btn-outline-light">
-                                Add Reply
+                        <div class="d-flex mt-3">
+                            <votes :initial_entity="comment" entity_type="comment"></votes>
+                            <button class="btn btn-sm ml-2 btn-default" style="color: #909090; font-size: medium; margin-top: -6px;">
+                                Reply
                             </button>
                         </div>
 
@@ -33,7 +33,7 @@
                             </div>
                         </div>
 
-                        <Replies :video="video" :comment="comment"></Replies>
+                        <Replies :comment="comment"></Replies>
                     </div>
                 </div>
             </div>

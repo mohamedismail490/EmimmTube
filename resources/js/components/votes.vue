@@ -41,6 +41,11 @@ export default {
             type: Object,
             required: true,
             default: () => ({})
+        },
+        entity_type: {
+            type: String,
+            required: true,
+            default: ''
         }
     },
     data() {
@@ -62,7 +67,7 @@ export default {
             return this.entity.is_down_voted
         },
         owner() {
-            return this.entity.channel.is_owner;
+            return this.entity.is_owner;
         },
     },
     methods: {
@@ -72,10 +77,7 @@ export default {
                 return alert('You Can\'t Vote this Item.')
             }
 
-            // if ((type === 'up') && this.upVoted) return;
-            // if ((type === 'down') && this.downVoted) return;
-
-            axios.post(`/channels/${this.entity.channel_id}/videos/votes/${this.entity.id}/${type}`)
+            axios.post(`/votes/${this.entity.id}/${this.entity_type}/${type}`)
                 .then(({data}) => {
                     if (data.status) {
                         this.entity = data.entity

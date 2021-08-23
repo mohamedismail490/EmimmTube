@@ -4860,17 +4860,11 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
 //
 //
 //
+//
 
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
   name: "replies",
   props: {
-    video: {
-      type: Object,
-      required: true,
-      "default": function _default() {
-        return {};
-      }
-    },
     comment: {
       type: Object,
       required: true,
@@ -5051,6 +5045,11 @@ __webpack_require__.r(__webpack_exports__);
       "default": function _default() {
         return {};
       }
+    },
+    entity_type: {
+      type: String,
+      required: true,
+      "default": ''
     }
   },
   data: function data() {
@@ -5072,7 +5071,7 @@ __webpack_require__.r(__webpack_exports__);
       return this.entity.is_down_voted;
     },
     owner: function owner() {
-      return this.entity.channel.is_owner;
+      return this.entity.is_owner;
     }
   },
   methods: {
@@ -5082,11 +5081,9 @@ __webpack_require__.r(__webpack_exports__);
       // check if the owner is trying to vote
       if (this.owner) {
         return alert('You Can\'t Vote this Item.');
-      } // if ((type === 'up') && this.upVoted) return;
-      // if ((type === 'down') && this.downVoted) return;
+      }
 
-
-      axios.post("/channels/".concat(this.entity.channel_id, "/videos/votes/").concat(this.entity.id, "/").concat(type)).then(function (_ref) {
+      axios.post("/votes/".concat(this.entity.id, "/").concat(this.entity_type, "/").concat(type)).then(function (_ref) {
         var data = _ref.data;
 
         if (data.status) {
@@ -104796,25 +104793,32 @@ var render = function() {
                             )
                           ]),
                           _vm._v(" "),
-                          _c("small", [_vm._v(_vm._s(comment.body))]),
+                          _c("span", [_vm._v(_vm._s(comment.body))]),
                           _vm._v(" "),
                           _c(
                             "div",
-                            { staticClass: "d-flex" },
+                            { staticClass: "d-flex mt-3" },
                             [
                               _c("votes", {
-                                attrs: { initial_entity: _vm.video }
+                                attrs: {
+                                  initial_entity: comment,
+                                  entity_type: "comment"
+                                }
                               }),
                               _vm._v(" "),
                               _c(
                                 "button",
                                 {
-                                  staticClass:
-                                    "btn btn-sm ml-2 btn-outline-light"
+                                  staticClass: "btn btn-sm ml-2 btn-default",
+                                  staticStyle: {
+                                    color: "#909090",
+                                    "font-size": "medium",
+                                    "margin-top": "-6px"
+                                  }
                                 },
                                 [
                                   _vm._v(
-                                    "\n                            Add Reply\n                        "
+                                    "\n                            Reply\n                        "
                                   )
                                 ]
                               )
@@ -104824,9 +104828,7 @@ var render = function() {
                           _vm._v(" "),
                           _vm._m(1, true),
                           _vm._v(" "),
-                          _c("Replies", {
-                            attrs: { video: _vm.video, comment: comment }
-                          })
+                          _c("Replies", { attrs: { comment: comment } })
                         ],
                         1
                       )
@@ -104991,26 +104993,30 @@ var render = function() {
                   }
                 }),
                 _vm._v(" "),
-                _c(
-                  "div",
-                  { staticClass: "media-body" },
-                  [
-                    _c("h6", { staticClass: "mt-0" }, [
-                      _vm._v(
-                        _vm._s(
-                          reply.user && reply.user.name
-                            ? reply.user.name
-                            : "Unknown User"
-                        )
+                _c("div", { staticClass: "media-body" }, [
+                  _c("h6", { staticClass: "mt-0" }, [
+                    _vm._v(
+                      _vm._s(
+                        reply.user && reply.user.name
+                          ? reply.user.name
+                          : "Unknown User"
                       )
-                    ]),
-                    _vm._v(" "),
-                    _c("small", [_vm._v(_vm._s(reply.body))]),
-                    _vm._v(" "),
-                    _c("votes", { attrs: { initial_entity: _vm.video } })
-                  ],
-                  1
-                )
+                    )
+                  ]),
+                  _vm._v(" "),
+                  _c("span", [_vm._v(_vm._s(reply.body))]),
+                  _vm._v(" "),
+                  _c(
+                    "div",
+                    { staticClass: "mt-3" },
+                    [
+                      _c("votes", {
+                        attrs: { initial_entity: reply, entity_type: "comment" }
+                      })
+                    ],
+                    1
+                  )
+                ])
               ],
               1
             )

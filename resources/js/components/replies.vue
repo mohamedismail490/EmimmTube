@@ -5,9 +5,10 @@
                 <Avatar :username="reply.user && reply.user.name ? reply.user.name : 'Unknown User'" :size="30" class="mr-3" :src="reply.user && reply.user.channel ? reply.user.channel.channel_image : ''"></Avatar>
                 <div class="media-body">
                     <h6 class="mt-0">{{ reply.user && reply.user.name ? reply.user.name : 'Unknown User'}}</h6>
-                    <small>{{ reply.body }}</small>
-
-                    <votes :initial_entity="video"></votes>
+                    <span>{{ reply.body }}</span>
+                    <div class="mt-3">
+                        <votes :initial_entity="reply" entity_type="comment"></votes>
+                    </div>
                 </div>
             </div>
         </div>
@@ -27,11 +28,6 @@ import Avatar from 'vue-avatar';
 export default {
     name: "replies",
     props: {
-        video: {
-            type: Object,
-            required: true,
-            default: () => ({})
-        },
         comment: {
             type: Object,
             required: true,

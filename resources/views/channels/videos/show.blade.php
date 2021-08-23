@@ -30,7 +30,7 @@
                                     </div>
                                     <div class="col-md-4">
                                         <div class="float-right">
-                                            <votes :initial_entity="{{ $video }}"></votes>
+                                            <votes :initial_entity="{{ $video }}" entity_type="video"></votes>
                                         </div>
 
                                     </div>
