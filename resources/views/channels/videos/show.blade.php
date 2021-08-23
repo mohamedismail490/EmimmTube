@@ -74,7 +74,7 @@
                                         @enderror
                                     </div>
                                     <div class="text-right">
-                                        <button type="submit" class="btn btn-info btn-sm mt-3">Update Video Details</button>
+                                        <button type="submit" class="btn btn-outline-info btn-sm mt-3">Update Video Details</button>
                                     </div>
                                 @else
                                     @if($video -> description != null)
@@ -83,73 +83,14 @@
                                         </div>
                                     @endif
                                 @endif
+                                <hr>
                             </div>
                     @if($video->editable())
                         </form>
                     @endif
                 </div>
 
-                <div class="card mt-5 p-5 video-card" style="width: 92% !important; border: none !important; margin-left: auto !important; margin-right: auto !important;">
-                    <div class="form-inline my-4 w-full">
-                        <input type="text" class="form-control form-control-sm w-80">
-                        <button class="btn btn-sm btn-primary">
-                            <small>Add comment</small>
-                        </button>
-                    </div>
-
-                    <div class="card my-3 video-card" style="width: 92% !important; border: none !important; margin-left: auto !important; margin-right: auto !important;">
-                        <img width="30" height="30" class="rounded-circle mr-3" src="https://picsum.photos/id/42/200/200" alt="">
-
-                        <div class="media-body">
-                            <h6 class="mt-0">
-                                Username
-                            </h6>
-                            <small>
-                                Comment Body
-                            </small>
-
-                            <div class="d-flex">
-                                <votes :initial_entity="{{$video}}"></votes>
-                                <button class="btn btn-sm ml-2 btn-default">
-                                    Add Reply
-                                </button>
-                            </div>
-
-                            <div class="form-inline my-4 w-full">
-                                <input type="text" class="form-control form-control-sm w-80">
-                                <button class="btn btn-sm btn-primary">
-                                    <small>Add reply</small>
-                                </button>
-                            </div>
-
-                            <div>
-                                <div class="media my-3">
-                                    <a class="mr-3" href="#">
-                                        <img width="30" height="30" class="rounded-circle mr-3" src="https://picsum.photos/id/42/200/200" alt="">
-                                    </a>
-                                    <div class="media-body">
-                                        <h6 class="mt-0">Reply Username</h6>
-                                        <small >
-                                            Reply Body
-                                        </small>
-
-                                        <votes :initial_entity="{{$video}}"></votes>
-                                    </div>
-                                </div>
-
-                                <div class="text-center">
-                                    <button class="btn btn-info btn-sm">Load Replies</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="text-center">
-                        <button class="btn btn-success">
-                            Load More
-                        </button>
-                    </div>
-                </div>
+                <comments :video="{{ $video }}"></comments>
             </div>
         </div>
     </div>

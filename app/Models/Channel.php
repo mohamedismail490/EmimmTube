@@ -11,7 +11,7 @@ class Channel extends Model implements HasMedia
 {
     use HasFactory,InteractsWithMedia;
 
-    protected $appends = ['is_subscribed','is_owner','subscriptions_count','user_subscription'];
+    protected $appends = ['channel_image','is_subscribed','is_owner','subscriptions_count','user_subscription'];
 
     public function user() {
         return $this->belongsTo(User::class);
@@ -47,7 +47,9 @@ class Channel extends Model implements HasMedia
         }
         return false;
     }
-
+    public function getChannelImageAttribute() {
+        return $this->image();
+    }
 
     public function image() {
         $media = $this -> media -> first();

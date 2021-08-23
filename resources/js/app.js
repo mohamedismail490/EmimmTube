@@ -14,6 +14,10 @@ Vue.component('votes',
     require('./components/votes').default
 )
 
+Vue.component('comments',
+    require('./components/comments').default
+)
+
 
 require('./components/channel-uploads');
 

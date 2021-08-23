@@ -54,6 +54,7 @@ class User extends Authenticatable
     ];
 
     protected $appends = ['created_since'];
+    protected $with    = ['channel'];
 
     public function getCreatedAtAttribute($value){
         return Carbon::parse($value)->format('Y-m-d G:i:s');

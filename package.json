@@ -27,6 +27,7 @@
     },
     "dependencies": {
         "numeral": "^2.0.6",
-        "videojs-contrib-hls": "^5.15.0"
+        "videojs-contrib-hls": "^5.15.0",
+        "vue-avatar": "^2.3.3"
     }
 }

@@ -7,6 +7,7 @@ use App\Http\Controllers\ChannelController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\VideoController;
 use App\Http\Controllers\VoteController;
+use App\Http\Controllers\CommentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -43,3 +44,6 @@ Route::group(['prefix' => 'channels', 'middleware' => ['auth']], function () {
         Route::post('votes/{video}/{type}', [VoteController::class, 'vote']);
     });
 });
+
+Route::get('videos/{video}/comments', [CommentController::class, 'index'])->name('video.comments');
+Route::get('comments/{comment}/replies', [CommentController::class, 'show'])->name('comment.replies');
