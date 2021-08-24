@@ -10162,6 +10162,15 @@ hr {
   background-color: transparent;
 }
 
+.btn-outline-dark,
+.btn-outline-dark:hover,
+.btn-outline-dark:not(:disabled):not(.disabled):active,
+.btn-outline-dark:focus {
+  color: #aaa;
+  border-color: #343a40;
+  background-color: transparent;
+}
+
 .btn-outline-success:hover,
 .btn-outline-success:not(:disabled):not(.disabled):active,
 .btn-outline-success:focus {
@@ -10185,6 +10194,7 @@ hr {
 .btn-outline-info:focus,
 .btn-outline-primary:focus,
 .btn-outline-light:focus,
+.btn-outline-dark:focus,
 .btn-outline-success:focus,
 .btn-dark:focus,
 .btn-danger:focus,
@@ -10192,4 +10202,16 @@ hr {
 .btn-info:focus,
 .btn-primary:focus {
   box-shadow: 0 0 0 0.2rem transparent;
+}
+
+input.reply-input, input.reply-input:focus, button.load-replies {
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  box-shadow: 0 0 0 0 transparent !important;
+}
+
+button.load-replies {
+  color: #3ea6ff !important;
+  font-weight: bold;
 }

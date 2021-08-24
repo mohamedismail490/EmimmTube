@@ -90,7 +90,7 @@
                                     <small class="text-danger">{{$message}}</small>
                                     @enderror
                                 </div>
-                                <button type="submit" class="btn btn-info">Update Channel</button>
+                                <button type="submit" class="btn btn-outline-info">Update Channel</button>
                             </form>
                         @endif
                     </div>

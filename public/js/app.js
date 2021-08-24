@@ -4761,6 +4761,14 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
 //
 //
 //
+//
+//
+//
+//
+//
+//
+//
+//
 
 
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
@@ -4782,7 +4790,9 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
     return {
       comments: {
         data: []
-      }
+      },
+      comment_input: false,
+      reply_input: {}
     };
   },
   methods: {
@@ -4792,10 +4802,20 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
       var url = this.comments.next_page_url ? this.comments.next_page_url : "/videos/".concat(this.video.id, "/comments");
       axios.get(url).then(function (_ref) {
         var data = _ref.data;
+        data.data.forEach(function (c) {
+          _this.reply_input[c.id] = 'none';
+        });
         _this.comments = _objectSpread(_objectSpread({}, data), {}, {
           data: [].concat(_toConsumableArray(_this.comments.data), _toConsumableArray(data.data))
         });
       });
+    },
+    toggleCommentInput: function toggleCommentInput(status) {
+      this.comment_input = status;
+    },
+    toggleReplyInput: function toggleReplyInput(commentId, status) {
+      this.reply_input[commentId] = status ? 'block' : 'none';
+      this.$forceUpdate();
     }
   },
   mounted: function mounted() {
@@ -4818,6 +4838,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* harmony import */ var vue_avatar__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! vue-avatar */ "./node_modules/vue-avatar/dist/vue-avatar.min.js");
 /* harmony import */ var vue_avatar__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(vue_avatar__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var numeral__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! numeral */ "./node_modules/numeral/numeral.js");
+/* harmony import */ var numeral__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(numeral__WEBPACK_IMPORTED_MODULE_1__);
 function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _unsupportedIterableToArray(arr) || _nonIterableSpread(); }
 
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
@@ -4861,6 +4883,19 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
 //
 //
 //
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+
 
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
   name: "replies",
@@ -4881,20 +4916,52 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
       replies: {
         data: [],
         next_page_url: "/comments/".concat(this.comment.id, "/replies")
-      }
+      },
+      repliesCount: numeral__WEBPACK_IMPORTED_MODULE_1___default()(this.comment.replies_count).format('0a'),
+      repliesShowedForTheFirstTime: {},
+      showAllReplies: {},
+      hideAllReplies: {}
     };
   },
   methods: {
     fetchReplies: function fetchReplies() {
       var _this = this;
 
+      var fetchOnce = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
       axios.get(this.replies.next_page_url).then(function (_ref) {
         var data = _ref.data;
         _this.replies = _objectSpread(_objectSpread({}, data), {}, {
           data: [].concat(_toConsumableArray(_this.replies.data), _toConsumableArray(data.data))
         });
+
+        if (fetchOnce) {
+          _this.repliesShowedForTheFirstTime[_this.comment.id] = true;
+          _this.showAllReplies[_this.comment.id] = false;
+          _this.hideAllReplies[_this.comment.id] = true;
+        }
       });
+    },
+    fetchRepliesOnce: function fetchRepliesOnce(type) {
+      if (!this.repliesShowedForTheFirstTime[this.comment.id] && type === 'show') {
+        this.fetchReplies(true);
+      } else {
+        if (type === 'show') {
+          this.showAllReplies[this.comment.id] = false;
+          this.hideAllReplies[this.comment.id] = true;
+        } else {
+          this.showAllReplies[this.comment.id] = true;
+          this.hideAllReplies[this.comment.id] = false;
+        }
+      }
+
+      this.$forceUpdate();
     }
+  },
+  mounted: function mounted() {
+    this.repliesShowedForTheFirstTime[this.comment.id] = false;
+    this.showAllReplies[this.comment.id] = true;
+    this.hideAllReplies[this.comment.id] = false;
+    this.$forceUpdate();
   }
 });
 
@@ -5035,6 +5102,8 @@ __webpack_require__.r(__webpack_exports__);
 //
 //
 //
+//
+//
 
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
   name: "Votes",
@@ -5061,8 +5130,14 @@ __webpack_require__.r(__webpack_exports__);
     upVotesCount: function upVotesCount() {
       return numeral__WEBPACK_IMPORTED_MODULE_0___default()(this.entity.up_votes_count).format('0a');
     },
+    upVotesRealCount: function upVotesRealCount() {
+      return this.entity.up_votes_count;
+    },
     downVotesCount: function downVotesCount() {
       return numeral__WEBPACK_IMPORTED_MODULE_0___default()(this.entity.down_votes_count).format('0a');
+    },
+    downVotesRealCount: function downVotesRealCount() {
+      return this.entity.down_votes_count;
     },
     upVoted: function upVoted() {
       return this.entity.is_up_voted;
@@ -104733,7 +104808,7 @@ var render = function() {
   return _c(
     "div",
     {
-      staticClass: "card mt-2 video-card",
+      staticClass: "card mt-2 mb-5 video-card",
       staticStyle: {
         width: "92% !important",
         border: "none !important",
@@ -104742,7 +104817,50 @@ var render = function() {
       }
     },
     [
-      _vm._m(0),
+      _c("div", { staticClass: "row my-4" }, [
+        _c("div", { staticClass: "col-md-12" }, [
+          _c("input", {
+            staticClass: "form-control form-control-sm reply-input",
+            attrs: { type: "text", placeholder: "Add a public comment" },
+            on: {
+              focus: function($event) {
+                $event.preventDefault()
+                return _vm.toggleCommentInput(true)
+              }
+            }
+          })
+        ]),
+        _vm._v(" "),
+        _vm.comment_input
+          ? _c("div", { staticClass: "col-md-12 mt-2" }, [
+              _c("div", { staticClass: "float-right" }, [
+                _c(
+                  "button",
+                  {
+                    staticClass: "btn btn-sm btn-outline-dark",
+                    attrs: { type: "button" },
+                    on: {
+                      click: function($event) {
+                        $event.preventDefault()
+                        return _vm.toggleCommentInput(false)
+                      }
+                    }
+                  },
+                  [_vm._v("Cancel")]
+                ),
+                _vm._v(" "),
+                _c(
+                  "button",
+                  {
+                    staticClass: "btn btn-sm btn-outline-primary",
+                    attrs: { type: "button" }
+                  },
+                  [_vm._v("Add Comment")]
+                )
+              ])
+            ])
+          : _vm._e()
+      ]),
       _vm._v(" "),
       _c(
         "div",
@@ -104813,7 +104931,16 @@ var render = function() {
                                   staticStyle: {
                                     color: "#909090",
                                     "font-size": "medium",
-                                    "margin-top": "-6px"
+                                    "margin-top": "-5px"
+                                  },
+                                  on: {
+                                    click: function($event) {
+                                      $event.preventDefault()
+                                      return _vm.toggleReplyInput(
+                                        comment.id,
+                                        true
+                                      )
+                                    }
                                   }
                                 },
                                 [
@@ -104826,7 +104953,49 @@ var render = function() {
                             1
                           ),
                           _vm._v(" "),
-                          _vm._m(1, true),
+                          _c(
+                            "div",
+                            {
+                              staticClass: "row mt-2 mb-4 ",
+                              style: "display: " + _vm.reply_input[comment.id]
+                            },
+                            [
+                              _vm._m(0, true),
+                              _vm._v(" "),
+                              _c("div", { staticClass: "col-md-12 mt-2" }, [
+                                _c("div", { staticClass: "float-right" }, [
+                                  _c(
+                                    "button",
+                                    {
+                                      staticClass:
+                                        "btn btn-sm btn-outline-dark",
+                                      attrs: { type: "button" },
+                                      on: {
+                                        click: function($event) {
+                                          $event.preventDefault()
+                                          return _vm.toggleReplyInput(
+                                            comment.id,
+                                            false
+                                          )
+                                        }
+                                      }
+                                    },
+                                    [_vm._v("Cancel")]
+                                  ),
+                                  _vm._v(" "),
+                                  _c(
+                                    "button",
+                                    {
+                                      staticClass:
+                                        "btn btn-sm btn-outline-primary",
+                                      attrs: { type: "button" }
+                                    },
+                                    [_vm._v("Add Reply")]
+                                  )
+                                ])
+                              ])
+                            ]
+                          ),
                           _vm._v(" "),
                           _c("Replies", { attrs: { comment: comment } })
                         ],
@@ -104839,7 +105008,7 @@ var render = function() {
                 0
               )
             : _c("span", { staticClass: "text-center mt-3" }, [
-                _vm._v("no comments added for this video yet!")
+                _vm._v("No comments added for this video yet!")
               ])
         ]
       ),
@@ -104861,7 +105030,7 @@ var render = function() {
                   },
                   [_vm._v("\n            load more comments\n        ")]
                 )
-              : _c("span", [_vm._v("no more comments to show...")])
+              : _c("span", [_vm._v("No more comments to show...")])
           ])
         : _vm._e()
     ]
@@ -104872,78 +105041,11 @@ var staticRenderFns = [
     var _vm = this
     var _h = _vm.$createElement
     var _c = _vm._self._c || _h
-    return _c("div", { staticClass: "form-inline my-4" }, [
-      _c(
-        "div",
-        {
-          staticClass: "input-group",
-          staticStyle: {
-            width: "100% !important",
-            "margin-left": "auto !important",
-            "margin-right": "auto !important"
-          }
-        },
-        [
-          _c("input", {
-            staticClass: "form-control form-control-sm",
-            attrs: {
-              type: "text",
-              placeholder: "add public comment",
-              "aria-describedby": "button-addon1"
-            }
-          }),
-          _vm._v(" "),
-          _c("div", { staticClass: "input-group-prepend" }, [
-            _c(
-              "button",
-              {
-                staticClass: "btn btn-sm btn-outline-primary",
-                attrs: { type: "button" }
-              },
-              [_vm._v("Add comment")]
-            )
-          ])
-        ]
-      )
-    ])
-  },
-  function() {
-    var _vm = this
-    var _h = _vm.$createElement
-    var _c = _vm._self._c || _h
-    return _c("div", { staticClass: "form-inline my-4" }, [
-      _c(
-        "div",
-        {
-          staticClass: "input-group",
-          staticStyle: {
-            width: "100% !important",
-            "margin-left": "auto !important",
-            "margin-right": "auto !important"
-          }
-        },
-        [
-          _c("input", {
-            staticClass: "form-control form-control-sm",
-            attrs: {
-              type: "text",
-              placeholder: "add public reply",
-              "aria-describedby": "button-addon1"
-            }
-          }),
-          _vm._v(" "),
-          _c("div", { staticClass: "input-group-prepend" }, [
-            _c(
-              "button",
-              {
-                staticClass: "btn btn-sm btn-outline-primary",
-                attrs: { type: "button" }
-              },
-              [_vm._v("Add reply")]
-            )
-          ])
-        ]
-      )
+    return _c("div", { staticClass: "col-md-12" }, [
+      _c("input", {
+        staticClass: "form-control form-control-sm reply-input",
+        attrs: { type: "text", placeholder: "Add a public reply" }
+      })
     ])
   }
 ]
@@ -104970,7 +105072,65 @@ var render = function() {
   var _h = _vm.$createElement
   var _c = _vm._self._c || _h
   return _c("div", [
-    _vm.replies.data.length > 0
+    _vm.comment.replies_count > 0
+      ? _c("div", [
+          _vm.showAllReplies[_vm.comment.id]
+            ? _c(
+                "button",
+                {
+                  staticClass: "btn btn-outline-info mt-2 mb-3 load-replies",
+                  attrs: { type: "button" },
+                  on: {
+                    click: function($event) {
+                      $event.preventDefault()
+                      return _vm.fetchRepliesOnce("show")
+                    }
+                  }
+                },
+                [
+                  _vm._v(
+                    "\n            View " +
+                      _vm._s(
+                        _vm.repliesCount +
+                          " " +
+                          (_vm.comment.replies_count > 1 ? "replies" : "reply")
+                      ) +
+                      "\n        "
+                  )
+                ]
+              )
+            : _vm._e(),
+          _vm._v(" "),
+          _vm.hideAllReplies[_vm.comment.id]
+            ? _c(
+                "button",
+                {
+                  staticClass: "btn btn-outline-info mt-2 mb-3 load-replies",
+                  attrs: { type: "button" },
+                  on: {
+                    click: function($event) {
+                      $event.preventDefault()
+                      return _vm.fetchRepliesOnce("hide")
+                    }
+                  }
+                },
+                [
+                  _vm._v(
+                    "\n            Hide " +
+                      _vm._s(
+                        _vm.repliesCount +
+                          " " +
+                          (_vm.comment.replies_count > 1 ? "replies" : "reply")
+                      ) +
+                      "\n        "
+                  )
+                ]
+              )
+            : _vm._e()
+        ])
+      : _vm._e(),
+    _vm._v(" "),
+    _vm.replies.data.length > 0 && _vm.hideAllReplies[_vm.comment.id]
       ? _c(
           "div",
           _vm._l(_vm.replies.data, function(reply) {
@@ -105025,13 +105185,13 @@ var render = function() {
         )
       : _vm._e(),
     _vm._v(" "),
-    _vm.comment.replies_count > 0
-      ? _c("div", { staticClass: "text-center" }, [
+    _vm.comment.replies_count > 0 && _vm.hideAllReplies[_vm.comment.id]
+      ? _c("div", [
           _vm.replies.next_page_url
             ? _c(
                 "button",
                 {
-                  staticClass: "btn btn-outline-info btn-sm ml-n5",
+                  staticClass: "btn btn-outline-info mt-2 mb-3 load-replies",
                   attrs: { type: "button" },
                   on: {
                     click: function($event) {
@@ -105040,7 +105200,7 @@ var render = function() {
                     }
                   }
                 },
-                [_vm._v("\n            load replies\n        ")]
+                [_vm._v("\n            Show more replies\n        ")]
               )
             : _vm._e()
         ])
@@ -105131,6 +105291,8 @@ var render = function() {
         }
       },
       [
+        _c("title", [_vm._v("Like")]),
+        _vm._v(" "),
         _c("path", {
           attrs: {
             d:
@@ -105149,7 +105311,9 @@ var render = function() {
       ]
     ),
     _vm._v(" "),
-    _c("span", [_vm._v(_vm._s(_vm.upVotesCount))]),
+    _c("span", { attrs: { title: _vm.upVotesRealCount } }, [
+      _vm._v(_vm._s(_vm.upVotesCount))
+    ]),
     _vm._v(" "),
     _c(
       "svg",
@@ -105166,6 +105330,8 @@ var render = function() {
         }
       },
       [
+        _c("title", [_vm._v("Dislike")]),
+        _vm._v(" "),
         _c("path", {
           attrs: {
             d:
@@ -105183,7 +105349,10 @@ var render = function() {
         })
       ]
     ),
-    _vm._v("\n\n    " + _vm._s(_vm.downVotesCount) + "\n")
+    _vm._v(" "),
+    _c("span", { attrs: { title: _vm.downVotesRealCount } }, [
+      _vm._v(_vm._s(_vm.downVotesCount))
+    ])
   ])
 }
 var staticRenderFns = []

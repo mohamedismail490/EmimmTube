@@ -3,6 +3,7 @@
         <svg @click.prevent="vote('up')" class="thumbs-up" :class="{'thumb-up-active': upVoted}"
              viewBox="0 0 16 16" style="margin-bottom: 3px;"
              xmlns="http://www.w3.org/2000/svg">
+            <title>Like</title>
             <path d="m0 1v8c0 .552246.447693 1 1 1h3v-10h-3c-.552307 0-1 .447693-1 1z" transform="translate(0 5)"/>
             <path
                 d="m9.15332 5.02979h-2.9541c-.258301
@@ -12,11 +13,12 @@
                 transform="translate(5 .97)"/>
         </svg>
 
-        <span>{{ upVotesCount }}</span>
+        <span :title="upVotesRealCount">{{ upVotesCount }}</span>
 
         <svg @click.prevent="vote('down')" class="thumbs-down" :class="{'thumb-down-active': downVoted}"
              viewBox="0 0 16 16" style="margin-left: 5px;"
              xmlns="http://www.w3.org/2000/svg">
+            <title>Dislike</title>
             <path d="m0 9v-8c0-.552246.447693-1 1-1h3v10h-3c-.552307-.0000001-1-.447693-1-1z"
                   transform="translate(0 1)"/>
             <path
@@ -27,7 +29,7 @@
                 transform="translate(5 1)"/>
         </svg>
 
-        {{ downVotesCount }}
+        <span :title="downVotesRealCount">{{ downVotesCount }}</span>
     </div>
 </template>
 
@@ -57,8 +59,14 @@ export default {
         upVotesCount() {
             return numeral(this.entity.up_votes_count).format('0a')
         },
+        upVotesRealCount() {
+            return this.entity.up_votes_count
+        },
         downVotesCount() {
             return numeral(this.entity.down_votes_count).format('0a')
+        },
+        downVotesRealCount() {
+            return this.entity.down_votes_count
         },
         upVoted() {
             return this.entity.is_up_voted
