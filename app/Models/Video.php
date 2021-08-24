@@ -23,6 +23,10 @@ class Video extends Model
         return $this->hasMany(Comment::class)->whereNull('comment_id');
     }
 
+    public function progressbar_thumbnails() {
+        return $this->hasMany(ProgressbarThumbnail::class);
+    }
+
 
     public function getIsOwnerAttribute() {
         return auth()->check() ? ($this->channel->user_id === auth()->user()->id) : false;

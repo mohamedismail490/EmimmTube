@@ -201,3 +201,35 @@ button.load-replies {
     color: #3ea6ff !important;
     font-weight: bold;
 }
+
+body.theater-mode {
+    height: 100%;
+    overflow: hidden;
+    transition: all .5s linear;
+}
+
+.theater-background {
+    position: fixed;
+    opacity: 0;
+    pointer-events: none;
+    width: 100%;
+    height: 100%;
+    background-color: #000;
+    top: 0;
+    left: 0;
+    z-index: 2;
+    transition: all .3s linear;
+}
+
+#videoContainer {
+    position: relative;
+    z-index: 3;
+    //min-height: 360px;
+    //height: 509px;
+    display: flex;
+    background: #181818;
+    //width: 905px;
+    margin: 0 auto;
+    transition: all .3s linear;
+    //max-width: 100%;
+}

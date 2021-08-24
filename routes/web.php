@@ -48,3 +48,4 @@ Route::post('votes/{entityId}/{entityType}/{type}', [VoteController::class, 'vot
 
 Route::get('videos/{video}/comments', [CommentController::class, 'index'])->name('video.comments');
 Route::get('comments/{comment}/replies', [CommentController::class, 'show'])->name('comment.replies');
+Route::get('videos/{video}/progressbar_thumbs', [VideoController::class, 'progressbarThumbs'])->name('video.progressbar.thumbs');

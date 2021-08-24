@@ -2,7 +2,8 @@
 
 @section('content')
     <div class="container-fluid">
-        <div class="row">
+        <div class="theater-background"></div>
+        <div class="row" id="page">
             <div class="col-md-8">
                 <div class="card video-card" style="width: 92% !important; border: none !important; margin-left: auto !important; margin-right: auto !important;">
                     @if($video->editable())
@@ -11,13 +12,17 @@
                             @method('PUT')
                     @endif
                             <div class="card-body" style="margin: -20px !important;">
-                                <video-js id="video" data-channelid="{{ $video->channel_id }}"
-                                          data-videoid="{{ $video->id }}"
-                                          class="video-js vjs-default-skin" controls preload="auto" width="640"
-                                          height="360" @if($video->thumbnail) poster="{{asset($video->thumbnail)}} @endif">
-                                    <source src='{{ asset(Storage::url("videos/{$video->id}/{$video->id}.m3u8")) }}'
-                                            type="application/x-mpegURL">
-                                </video-js>
+                                <div id="videoContainer" style="width: 100%;">
+                                    <video-js id="video" data-channelid="{{ $video->channel_id }}"
+                                              data-videoid="{{ $video->id }}"
+                                              data-videothumb="{{asset($video->thumbnail)}}"
+                                              data-videothumbs="{{json_encode($video->progressbar_thumbnails)}}"
+                                              class="video-js vjs-default-skin" controls preload="auto" width="905"
+                                              height="509" @if($video->thumbnail) poster="{{asset($video->thumbnail)}} @endif">
+                                        <source src='{{ asset(Storage::url("videos/{$video->id}/{$video->id}.m3u8")) }}'
+                                                type="application/x-mpegURL">
+                                    </video-js>
+                                </div>
 
                                 <div class="d-flex row justify-content-between align-items-center">
                                     <div class="col-md-12">

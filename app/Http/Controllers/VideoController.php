@@ -6,6 +6,7 @@ use App\Http\Requests\Channels\UploadVideoRequest;
 use App\Http\Requests\Videos\UpdateVideoRequest;
 use App\Http\Requests\Videos\ValidateVideosTypesRequest;
 use App\Jobs\Videos\ConvertingForStreaming;
+use App\Jobs\Videos\CreateVideoProgressBarThumbnails;
 use App\Jobs\Videos\CreateVideoThumbnail;
 use App\Models\Channel;
 use App\Models\Video;
@@ -44,6 +45,7 @@ class VideoController extends Controller
             'path' => $request -> file('video') -> store("channels/{$channel->id}")
         ]);
         $this->dispatch(new CreateVideoThumbnail($video));
+        $this->dispatch(new CreateVideoProgressBarThumbnails($video));
         $this->dispatch(new ConvertingForStreaming($video));
         return $video;
     }
@@ -92,6 +94,10 @@ class VideoController extends Controller
         ]);
 
         return back();
+    }
+
+    public function progressbarThumbs(Video $video) {
+        return response()->json($video->progressbar_thumbnails);
     }
 
     /**

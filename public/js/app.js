@@ -31,6 +31,289 @@ module.exports.default = module.exports, module.exports.__esModule = true;
 
 /***/ }),
 
+/***/ "./node_modules/@hola.org/videojs-thumbnails/videojs.thumbnails.js":
+/*!*************************************************************************!*\
+  !*** ./node_modules/@hola.org/videojs-thumbnails/videojs.thumbnails.js ***!
+  \*************************************************************************/
+/***/ (() => {
+
+(function() {
+  'use strict';
+  var extend = function() {
+      var args, target, i, object, property;
+      args = Array.prototype.slice.call(arguments);
+      target = args.shift() || {};
+      for (i in args) {
+        object = args[i];
+        for (property in object) {
+          if (object.hasOwnProperty(property)) {
+            if (typeof object[property] === 'object') {
+              target[property] = extend(target[property], object[property]);
+            } else {
+              target[property] = object[property];
+            }
+          }
+        }
+      }
+      return target;
+    },
+    getComputedStyle = function(el, pseudo) {
+      return function(prop) {
+        if (window.getComputedStyle) {
+          return window.getComputedStyle(el, pseudo)[prop];
+        } else {
+          return el.currentStyle[prop];
+        }
+      };
+    },
+    offsetParent = function(el) {
+      if (el.nodeName !== 'HTML' && getComputedStyle(el)('position') === 'static') {
+        return offsetParent(el.offsetParent);
+      }
+      return el;
+    },
+    getScrollOffset = function() {
+      if (window.pageXOffset) {
+        return {
+          x: window.pageXOffset,
+          y: window.pageYOffset
+        };
+      }
+      return {
+        x: document.documentElement.scrollLeft,
+        y: document.documentElement.scrollTop
+      };
+    },
+    // unfold sprites configuration by automatically calculating correct window
+    // for each sprite image
+    unfoldSpritesConf = function(options) {
+      var last = {};
+      Object.keys(options).forEach(function(key) {
+        var s;
+        if (!(s = options[key].sprites))
+          return;
+        delete options[key].sprites;
+        if (!s.position && s.interval && s.count) {
+          s.position = [];
+          for (var i=0; i<s.count; i++)
+            s.position.push(+key+i*s.interval);
+        }
+        var rows = s.rows||1;
+        var cols = Math.ceil(s.position.length/rows);
+        s.position.forEach(function(pos, i) {
+          var x = i%cols, y = Math.floor(i/cols);
+          options[pos] = options[pos]||{};
+          options[pos] = extend({}, last, options[pos], {
+            width: s.width,
+            height: s.height,
+            style: {
+              left: '-'+s.width*x+'px',
+              top: '-'+s.height*y+'px',
+            }
+          });
+          last = options[key];
+        });
+      });
+      return options;
+    },
+    androidHack = function(player) {
+      // Android doesn't support :active and :hover on non-anchor and non-button elements
+      // so, we need to fake the :active selector for thumbnails to show up.
+      if (navigator.userAgent.toLowerCase().indexOf('android') !== -1) {
+        var progressControl = player.controlBar.progressControl;
+        var addFakeActive = function() {
+          progressControl.addClass('fake-active');
+        };
+        var removeFakeActive = function() {
+          progressControl.removeClass('fake-active');
+        };
+        progressControl.on('touchstart', addFakeActive);
+        progressControl.on('touchend', removeFakeActive);
+        progressControl.on('touchcancel', removeFakeActive);
+      }
+    },
+    resolveUrl = function(baseUrl, url) {
+      var base = document.createElement('base');
+      base.href = baseUrl;
+      var head = document.getElementsByTagName('head')[0];
+      head.insertBefore(base, head.firstChild);
+      var a = document.createElement('a');
+      a.href = url;
+      var result = a.href;
+      head.removeChild(base);
+      return result;
+    },
+    getConfByVtt = function(track, baseUrl) {
+      var res = {}, cues = track.cues;
+      for (var i = 0; i < cues.length; i++) {
+        var cue = cues[i];
+        var thumb = res[cue.startTime] = {
+          src: resolveUrl(baseUrl, cue.text.split('#')[0]),
+        };
+        var opt = cue.text.split('#')[1];
+        if (opt && opt.substring(0, 5) === 'xywh=') {
+          var params = opt.substring(5).split(',');
+          thumb.width = params[2];
+          thumb.height = params[3];
+          thumb.style = {
+            left: '-'+params[0]+'px',
+            top: '-'+params[1]+'px',
+          };
+        }
+      }
+      return res;
+    },
+    init = function(player, options) {
+      if (player._thumbs) {
+        player._thumbs.settings = options;
+        return;
+      }
+      player._thumbs = {settings: options};
+      androidHack(player);
+
+      // create the thumbnail
+      var div = document.createElement('div');
+      div.className = 'vjs-thumbnail-holder';
+      var img = document.createElement('img');
+      div.appendChild(img);
+      img.className = 'vjs-thumbnail';
+
+      // keep track of the duration to calculate correct thumbnail to display
+      var duration = player.duration();
+
+      // when the container is MP4
+      player.on('durationchange', function(event) {
+        duration = player.duration();
+      });
+
+      // when the container is HLS
+      player.on('loadedmetadata', function(event) {
+        duration = player.duration();
+      });
+
+      // add the thumbnail to the player
+      var progressControl = player.controlBar.progressControl;
+      var seekBar = progressControl.seekBar;
+      var el = progressControl.el();
+      if (el.firstChild)
+        el.insertBefore(div, el.firstChild);
+      else
+        el.appendChild(div);
+
+      var moveListener = function(event) {
+        if (event.target === div || event.target === img) {
+          return;
+        }
+        var pageXOffset = getScrollOffset().x;
+        var minLeft = seekBar.el().offsetLeft;
+        var maxRight = minLeft+seekBar.el().offsetWidth;
+
+        var pageX = event.pageX;
+        if (event.changedTouches) {
+          pageX = event.changedTouches[0].pageX;
+        }
+        // find the page offset of the mouse
+        var left = pageX || (event.clientX + document.body.scrollLeft +
+          document.documentElement.scrollLeft);
+        // subtract the page offset of the positioned offset parent
+        left -= offsetParent(progressControl.el()).getBoundingClientRect().left +
+          pageXOffset;
+
+        // apply updated styles to the thumbnail if necessary
+        // mouseTime is the position of the mouse along the progress control bar
+        // `left` applies to the mouse position relative to the player so we need
+        // to remove the progress control's left offset to know the mouse position
+        // relative to the progress control
+        var mouseTime = Math.floor(seekBar.calculateDistance(event)*duration);
+        var active = 0, settings = player._thumbs.settings;
+        for (var time in settings) {
+          if (mouseTime > time) {
+            active = Math.max(active, time);
+          }
+        }
+        var setting = settings[active];
+        if (!setting) {
+          return;
+        }
+        var re = /^https?:\/\//i;
+        if (setting.src && img.src.replace(re, '//') !=
+            setting.src.replace(re, '//')) {
+          img.src = setting.src;
+        }
+        var scale = player.hasClass('vjs-fullscreen') ? 1.5 : 1;
+        if (setting.style) {
+          img.style.left = parseFloat(setting.style.left)*scale+'px';
+          img.style.top = parseFloat(setting.style.top)*scale+'px';
+        }
+        if (img.naturalWidth) {
+          img.style.width = img.naturalWidth*scale+'px';
+          img.style.height = img.naturalHeight*scale+'px';
+        }
+
+        var width = parseFloat(setting.width || settings[0].width)*scale;
+        var height = parseFloat(setting.height || settings[0].height)*scale;
+        var halfWidth = width / 2;
+
+        // make sure that the thumbnail doesn't fall off the right side of the
+        // left side of the player
+        if (left + halfWidth > maxRight) {
+          left = maxRight - width;
+        } else if (left-halfWidth < minLeft) {
+          left = minLeft;
+        } else {
+          left -= halfWidth;
+        }
+
+        div.style.width = width + 'px';
+        div.style.height = height + 'px';
+        div.style.left = left + 'px';
+        div.style.top = '-' + height + 'px';
+        div.style.display = 'block';
+      };
+
+      // update the thumbnail while hovering
+      progressControl.on('mousemove', moveListener);
+      progressControl.on('touchmove', moveListener);
+
+      var moveCancel = function(event) {
+        div.style.display = 'none';
+      };
+
+      // move the placeholder out of the way when not hovering
+      progressControl.on('mouseout', moveCancel);
+      progressControl.on('touchcancel', moveCancel);
+      progressControl.on('touchend', moveCancel);
+      player.on('userinactive', moveCancel);
+    };
+
+  /**
+   * register the thubmnails plugin
+   */
+  videojs.plugin('thumbnails', function(options) {
+    if (!options) {
+      return;
+    }
+    var player = this;
+    if (!options.vtt) {
+      init(player, unfoldSpritesConf(options));
+      return;
+    }
+    var trackEl = player.addRemoteTextTrack({
+      id: 'thumbnails',
+      kind: 'metadata',
+      src: options.vtt,
+    });
+    trackEl.addEventListener('load', function onLoad() {
+      trackEl.removeEventListener('load', onLoad);
+      var track = player.textTracks().getTrackById('thumbnails');
+      init(player, getConfByVtt(track, options.vtt));
+    });
+  });
+})();
+
+
+/***/ }),
+
 /***/ "./node_modules/@videojs/vhs-utils/es/byte-helpers.js":
 /*!************************************************************!*\
   !*** ./node_modules/@videojs/vhs-utils/es/byte-helpers.js ***!
@@ -5188,6 +5471,21 @@ __webpack_require__.r(__webpack_exports__);
 __webpack_require__(/*! ./bootstrap */ "./resources/js/bootstrap.js");
 
 __webpack_require__(/*! ./videojs */ "./resources/js/videojs.js");
+
+__webpack_require__(/*! videojs-theater-mode/dist/videojs.theaterMode */ "./node_modules/videojs-theater-mode/dist/videojs.theaterMode.js");
+
+__webpack_require__(/*! videojs-theater-mode/dist/videojs.theaterMode.css */ "./node_modules/videojs-theater-mode/dist/videojs.theaterMode.css"); // require('videojs-preview-thumbnails/dist/videojs-preview-thumbnails')
+
+
+__webpack_require__(/*! @hola.org/videojs-thumbnails/videojs.thumbnails */ "./node_modules/@hola.org/videojs-thumbnails/videojs.thumbnails.js");
+
+__webpack_require__(/*! @hola.org/videojs-thumbnails/videojs.thumbnails.css */ "./node_modules/@hola.org/videojs-thumbnails/videojs.thumbnails.css");
+
+__webpack_require__(/*! videojs-contrib-quality-levels */ "./node_modules/videojs-contrib-quality-levels/dist/videojs-contrib-quality-levels.es.js");
+
+__webpack_require__(/*! videojs-hls-quality-selector */ "./node_modules/videojs-hls-quality-selector/dist/videojs-hls-quality-selector.es.js");
+
+__webpack_require__(/*! videojs-hotkeys/videojs.hotkeys */ "./node_modules/videojs-hotkeys/videojs.hotkeys.js");
 
 window.Vue = __webpack_require__(/*! vue */ "./node_modules/vue/dist/vue.esm.js").default;
 Vue.config.ignoredElements = ['video-js'];
@@ -11782,6 +12080,30 @@ function isnan (val) {
 
 /***/ }),
 
+/***/ "./node_modules/css-loader/dist/cjs.js??clonedRuleSet-9[0].rules[0].use[1]!./node_modules/postcss-loader/dist/cjs.js??clonedRuleSet-9[0].rules[0].use[2]!./node_modules/@hola.org/videojs-thumbnails/videojs.thumbnails.css":
+/*!**********************************************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/css-loader/dist/cjs.js??clonedRuleSet-9[0].rules[0].use[1]!./node_modules/postcss-loader/dist/cjs.js??clonedRuleSet-9[0].rules[0].use[2]!./node_modules/@hola.org/videojs-thumbnails/videojs.thumbnails.css ***!
+  \**********************************************************************************************************************************************************************************************************************************/
+/***/ ((module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var _css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../css-loader/dist/runtime/api.js */ "./node_modules/css-loader/dist/runtime/api.js");
+/* harmony import */ var _css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_0__);
+// Imports
+
+var ___CSS_LOADER_EXPORT___ = _css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_0___default()(function(i){return i[1]});
+// Module
+___CSS_LOADER_EXPORT___.push([module.id, "/* a wrapper element that tracks the mouse vertically */\n.video-js .vjs-thumbnail-holder {\n  position: absolute;\n  display: none;\n  overflow: hidden;\n  outline: 2px solid #2a2a2b;\n}\n\n/* the thumbnail image itself */\n.video-js .vjs-thumbnail-holder .vjs-thumbnail {\n  position: relative;\n  left: 0;\n  bottom: 1.3em;\n  opacity: 0;\n  padding: 0 !important;\n  border: 0 !important;\n  max-width: none !important;\n  max-height: none !important;\n  transition: opacity .2s ease;\n  -webkit-transition: opacity .2s ease;\n  -moz-transition: opacity .2s ease;\n  -mz-transition: opacity .2s ease;\n}\n\n/* fade in the thumbnail when hovering over the progress bar */\n/* .fake-active is needed for Android only. It's removed on touchend/touchecancel */\n.vjs-progress-control:hover .vjs-thumbnail,\n.vjs-progress-control.fake-active .vjs-thumbnail,\n.vjs-progress-control:active .vjs-thumbnail {\n  opacity: 1;\n}\n\n/* ... but hide the thumbnail when hovering directly over it */\n.vjs-progress-control:hover .vjs-thumbnail:hover,\n.vjs-progress-control:active .vjs-thumbnail:active {\n  opacity: 0;\n}\n", ""]);
+// Exports
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);
+
+
+/***/ }),
+
 /***/ "./node_modules/css-loader/dist/cjs.js??clonedRuleSet-9[0].rules[0].use[1]!./node_modules/postcss-loader/dist/cjs.js??clonedRuleSet-9[0].rules[0].use[2]!./node_modules/video.js/dist/video-js.min.css":
 /*!*************************************************************************************************************************************************************************************************************!*\
   !*** ./node_modules/css-loader/dist/cjs.js??clonedRuleSet-9[0].rules[0].use[1]!./node_modules/postcss-loader/dist/cjs.js??clonedRuleSet-9[0].rules[0].use[2]!./node_modules/video.js/dist/video-js.min.css ***!
@@ -11800,6 +12122,30 @@ __webpack_require__.r(__webpack_exports__);
 var ___CSS_LOADER_EXPORT___ = _css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_0___default()(function(i){return i[1]});
 // Module
 ___CSS_LOADER_EXPORT___.push([module.id, "@charset \"UTF-8\";.video-js .vjs-big-play-button .vjs-icon-placeholder:before,.video-js .vjs-modal-dialog,.vjs-button>.vjs-icon-placeholder:before,.vjs-modal-dialog .vjs-modal-dialog-content{position:absolute;top:0;left:0;width:100%;height:100%}.video-js .vjs-big-play-button .vjs-icon-placeholder:before,.vjs-button>.vjs-icon-placeholder:before{text-align:center}@font-face{font-family:VideoJS;src:url(data:application/font-woff;charset=utf-8;base64,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) format(\"woff\");font-weight:400;font-style:normal}.video-js .vjs-big-play-button .vjs-icon-placeholder:before,.video-js .vjs-play-control .vjs-icon-placeholder,.vjs-icon-play{font-family:VideoJS;font-weight:400;font-style:normal}.video-js .vjs-big-play-button .vjs-icon-placeholder:before,.video-js .vjs-play-control .vjs-icon-placeholder:before,.vjs-icon-play:before{content:\"\\f101\"}.vjs-icon-play-circle{font-family:VideoJS;font-weight:400;font-style:normal}.vjs-icon-play-circle:before{content:\"\\f102\"}.video-js .vjs-play-control.vjs-playing .vjs-icon-placeholder,.vjs-icon-pause{font-family:VideoJS;font-weight:400;font-style:normal}.video-js .vjs-play-control.vjs-playing .vjs-icon-placeholder:before,.vjs-icon-pause:before{content:\"\\f103\"}.video-js .vjs-mute-control.vjs-vol-0 .vjs-icon-placeholder,.vjs-icon-volume-mute{font-family:VideoJS;font-weight:400;font-style:normal}.video-js .vjs-mute-control.vjs-vol-0 .vjs-icon-placeholder:before,.vjs-icon-volume-mute:before{content:\"\\f104\"}.video-js .vjs-mute-control.vjs-vol-1 .vjs-icon-placeholder,.vjs-icon-volume-low{font-family:VideoJS;font-weight:400;font-style:normal}.video-js .vjs-mute-control.vjs-vol-1 .vjs-icon-placeholder:before,.vjs-icon-volume-low:before{content:\"\\f105\"}.video-js .vjs-mute-control.vjs-vol-2 .vjs-icon-placeholder,.vjs-icon-volume-mid{font-family:VideoJS;font-weight:400;font-style:normal}.video-js .vjs-mute-control.vjs-vol-2 .vjs-icon-placeholder:before,.vjs-icon-volume-mid:before{content:\"\\f106\"}.video-js .vjs-mute-control .vjs-icon-placeholder,.vjs-icon-volume-high{font-family:VideoJS;font-weight:400;font-style:normal}.video-js .vjs-mute-control .vjs-icon-placeholder:before,.vjs-icon-volume-high:before{content:\"\\f107\"}.video-js .vjs-fullscreen-control .vjs-icon-placeholder,.vjs-icon-fullscreen-enter{font-family:VideoJS;font-weight:400;font-style:normal}.video-js .vjs-fullscreen-control .vjs-icon-placeholder:before,.vjs-icon-fullscreen-enter:before{content:\"\\f108\"}.video-js.vjs-fullscreen .vjs-fullscreen-control .vjs-icon-placeholder,.vjs-icon-fullscreen-exit{font-family:VideoJS;font-weight:400;font-style:normal}.video-js.vjs-fullscreen .vjs-fullscreen-control .vjs-icon-placeholder:before,.vjs-icon-fullscreen-exit:before{content:\"\\f109\"}.vjs-icon-square{font-family:VideoJS;font-weight:400;font-style:normal}.vjs-icon-square:before{content:\"\\f10a\"}.vjs-icon-spinner{font-family:VideoJS;font-weight:400;font-style:normal}.vjs-icon-spinner:before{content:\"\\f10b\"}.video-js .vjs-subs-caps-button .vjs-icon-placeholder,.video-js .vjs-subtitles-button .vjs-icon-placeholder,.video-js.video-js:lang(en-AU) .vjs-subs-caps-button .vjs-icon-placeholder,.video-js.video-js:lang(en-GB) .vjs-subs-caps-button .vjs-icon-placeholder,.video-js.video-js:lang(en-IE) .vjs-subs-caps-button .vjs-icon-placeholder,.video-js.video-js:lang(en-NZ) .vjs-subs-caps-button .vjs-icon-placeholder,.vjs-icon-subtitles{font-family:VideoJS;font-weight:400;font-style:normal}.video-js .vjs-subs-caps-button .vjs-icon-placeholder:before,.video-js .vjs-subtitles-button .vjs-icon-placeholder:before,.video-js.video-js:lang(en-AU) .vjs-subs-caps-button .vjs-icon-placeholder:before,.video-js.video-js:lang(en-GB) .vjs-subs-caps-button .vjs-icon-placeholder:before,.video-js.video-js:lang(en-IE) .vjs-subs-caps-button .vjs-icon-placeholder:before,.video-js.video-js:lang(en-NZ) .vjs-subs-caps-button .vjs-icon-placeholder:before,.vjs-icon-subtitles:before{content:\"\\f10c\"}.video-js .vjs-captions-button .vjs-icon-placeholder,.video-js:lang(en) .vjs-subs-caps-button .vjs-icon-placeholder,.video-js:lang(fr-CA) .vjs-subs-caps-button .vjs-icon-placeholder,.vjs-icon-captions{font-family:VideoJS;font-weight:400;font-style:normal}.video-js .vjs-captions-button .vjs-icon-placeholder:before,.video-js:lang(en) .vjs-subs-caps-button .vjs-icon-placeholder:before,.video-js:lang(fr-CA) .vjs-subs-caps-button .vjs-icon-placeholder:before,.vjs-icon-captions:before{content:\"\\f10d\"}.video-js .vjs-chapters-button .vjs-icon-placeholder,.vjs-icon-chapters{font-family:VideoJS;font-weight:400;font-style:normal}.video-js .vjs-chapters-button .vjs-icon-placeholder:before,.vjs-icon-chapters:before{content:\"\\f10e\"}.vjs-icon-share{font-family:VideoJS;font-weight:400;font-style:normal}.vjs-icon-share:before{content:\"\\f10f\"}.vjs-icon-cog{font-family:VideoJS;font-weight:400;font-style:normal}.vjs-icon-cog:before{content:\"\\f110\"}.video-js .vjs-play-progress,.video-js .vjs-volume-level,.vjs-icon-circle,.vjs-seek-to-live-control .vjs-icon-placeholder{font-family:VideoJS;font-weight:400;font-style:normal}.video-js .vjs-play-progress:before,.video-js .vjs-volume-level:before,.vjs-icon-circle:before,.vjs-seek-to-live-control .vjs-icon-placeholder:before{content:\"\\f111\"}.vjs-icon-circle-outline{font-family:VideoJS;font-weight:400;font-style:normal}.vjs-icon-circle-outline:before{content:\"\\f112\"}.vjs-icon-circle-inner-circle{font-family:VideoJS;font-weight:400;font-style:normal}.vjs-icon-circle-inner-circle:before{content:\"\\f113\"}.vjs-icon-hd{font-family:VideoJS;font-weight:400;font-style:normal}.vjs-icon-hd:before{content:\"\\f114\"}.video-js .vjs-control.vjs-close-button .vjs-icon-placeholder,.vjs-icon-cancel{font-family:VideoJS;font-weight:400;font-style:normal}.video-js .vjs-control.vjs-close-button .vjs-icon-placeholder:before,.vjs-icon-cancel:before{content:\"\\f115\"}.video-js .vjs-play-control.vjs-ended .vjs-icon-placeholder,.vjs-icon-replay{font-family:VideoJS;font-weight:400;font-style:normal}.video-js .vjs-play-control.vjs-ended .vjs-icon-placeholder:before,.vjs-icon-replay:before{content:\"\\f116\"}.vjs-icon-facebook{font-family:VideoJS;font-weight:400;font-style:normal}.vjs-icon-facebook:before{content:\"\\f117\"}.vjs-icon-gplus{font-family:VideoJS;font-weight:400;font-style:normal}.vjs-icon-gplus:before{content:\"\\f118\"}.vjs-icon-linkedin{font-family:VideoJS;font-weight:400;font-style:normal}.vjs-icon-linkedin:before{content:\"\\f119\"}.vjs-icon-twitter{font-family:VideoJS;font-weight:400;font-style:normal}.vjs-icon-twitter:before{content:\"\\f11a\"}.vjs-icon-tumblr{font-family:VideoJS;font-weight:400;font-style:normal}.vjs-icon-tumblr:before{content:\"\\f11b\"}.vjs-icon-pinterest{font-family:VideoJS;font-weight:400;font-style:normal}.vjs-icon-pinterest:before{content:\"\\f11c\"}.video-js .vjs-descriptions-button .vjs-icon-placeholder,.vjs-icon-audio-description{font-family:VideoJS;font-weight:400;font-style:normal}.video-js .vjs-descriptions-button .vjs-icon-placeholder:before,.vjs-icon-audio-description:before{content:\"\\f11d\"}.video-js .vjs-audio-button .vjs-icon-placeholder,.vjs-icon-audio{font-family:VideoJS;font-weight:400;font-style:normal}.video-js .vjs-audio-button .vjs-icon-placeholder:before,.vjs-icon-audio:before{content:\"\\f11e\"}.vjs-icon-next-item{font-family:VideoJS;font-weight:400;font-style:normal}.vjs-icon-next-item:before{content:\"\\f11f\"}.vjs-icon-previous-item{font-family:VideoJS;font-weight:400;font-style:normal}.vjs-icon-previous-item:before{content:\"\\f120\"}.video-js .vjs-picture-in-picture-control .vjs-icon-placeholder,.vjs-icon-picture-in-picture-enter{font-family:VideoJS;font-weight:400;font-style:normal}.video-js .vjs-picture-in-picture-control .vjs-icon-placeholder:before,.vjs-icon-picture-in-picture-enter:before{content:\"\\f121\"}.video-js.vjs-picture-in-picture .vjs-picture-in-picture-control .vjs-icon-placeholder,.vjs-icon-picture-in-picture-exit{font-family:VideoJS;font-weight:400;font-style:normal}.video-js.vjs-picture-in-picture .vjs-picture-in-picture-control .vjs-icon-placeholder:before,.vjs-icon-picture-in-picture-exit:before{content:\"\\f122\"}.video-js{display:block;vertical-align:top;box-sizing:border-box;color:#fff;background-color:#000;position:relative;padding:0;font-size:10px;line-height:1;font-weight:400;font-style:normal;font-family:Arial,Helvetica,sans-serif;word-break:initial}.video-js:-moz-full-screen{position:absolute}.video-js:-webkit-full-screen{width:100%!important;height:100%!important}.video-js[tabindex=\"-1\"]{outline:0}.video-js *,.video-js :after,.video-js :before{box-sizing:inherit}.video-js ul{font-family:inherit;font-size:inherit;line-height:inherit;list-style-position:outside;margin-left:0;margin-right:0;margin-top:0;margin-bottom:0}.video-js.vjs-1-1,.video-js.vjs-16-9,.video-js.vjs-4-3,.video-js.vjs-9-16,.video-js.vjs-fluid{width:100%;max-width:100%;height:0}.video-js.vjs-16-9{padding-top:56.25%}.video-js.vjs-4-3{padding-top:75%}.video-js.vjs-9-16{padding-top:177.7777777778%}.video-js.vjs-1-1{padding-top:100%}.video-js.vjs-fill{width:100%;height:100%}.video-js .vjs-tech{position:absolute;top:0;left:0;width:100%;height:100%}body.vjs-full-window{padding:0;margin:0;height:100%}.vjs-full-window .video-js.vjs-fullscreen{position:fixed;overflow:hidden;z-index:1000;left:0;top:0;bottom:0;right:0}.video-js.vjs-fullscreen:not(.vjs-ios-native-fs){width:100%!important;height:100%!important;padding-top:0!important}.video-js.vjs-fullscreen.vjs-user-inactive{cursor:none}.vjs-hidden{display:none!important}.vjs-disabled{opacity:.5;cursor:default}.video-js .vjs-offscreen{height:1px;left:-9999px;position:absolute;top:0;width:1px}.vjs-lock-showing{display:block!important;opacity:1!important;visibility:visible!important}.vjs-no-js{padding:20px;color:#fff;background-color:#000;font-size:18px;font-family:Arial,Helvetica,sans-serif;text-align:center;width:300px;height:150px;margin:0 auto}.vjs-no-js a,.vjs-no-js a:visited{color:#66a8cc}.video-js .vjs-big-play-button{font-size:3em;line-height:1.5em;height:1.63332em;width:3em;display:block;position:absolute;top:10px;left:10px;padding:0;cursor:pointer;opacity:1;border:.06666em solid #fff;background-color:#2b333f;background-color:rgba(43,51,63,.7);border-radius:.3em;transition:all .4s}.vjs-big-play-centered .vjs-big-play-button{top:50%;left:50%;margin-top:-.81666em;margin-left:-1.5em}.video-js .vjs-big-play-button:focus,.video-js:hover .vjs-big-play-button{border-color:#fff;background-color:#73859f;background-color:rgba(115,133,159,.5);transition:all 0s}.vjs-controls-disabled .vjs-big-play-button,.vjs-error .vjs-big-play-button,.vjs-has-started .vjs-big-play-button,.vjs-using-native-controls .vjs-big-play-button{display:none}.vjs-has-started.vjs-paused.vjs-show-big-play-button-on-pause .vjs-big-play-button{display:block}.video-js button{background:0 0;border:none;color:inherit;display:inline-block;font-size:inherit;line-height:inherit;text-transform:none;text-decoration:none;transition:none;-webkit-appearance:none;-moz-appearance:none;appearance:none}.vjs-control .vjs-button{width:100%;height:100%}.video-js .vjs-control.vjs-close-button{cursor:pointer;height:3em;position:absolute;right:0;top:.5em;z-index:2}.video-js .vjs-modal-dialog{background:rgba(0,0,0,.8);background:linear-gradient(180deg,rgba(0,0,0,.8),rgba(255,255,255,0));overflow:auto}.video-js .vjs-modal-dialog>*{box-sizing:border-box}.vjs-modal-dialog .vjs-modal-dialog-content{font-size:1.2em;line-height:1.5;padding:20px 24px;z-index:1}.vjs-menu-button{cursor:pointer}.vjs-menu-button.vjs-disabled{cursor:default}.vjs-workinghover .vjs-menu-button.vjs-disabled:hover .vjs-menu{display:none}.vjs-menu .vjs-menu-content{display:block;padding:0;margin:0;font-family:Arial,Helvetica,sans-serif;overflow:auto}.vjs-menu .vjs-menu-content>*{box-sizing:border-box}.vjs-scrubbing .vjs-control.vjs-menu-button:hover .vjs-menu{display:none}.vjs-menu li{list-style:none;margin:0;padding:.2em 0;line-height:1.4em;font-size:1.2em;text-align:center;text-transform:lowercase}.js-focus-visible .vjs-menu li.vjs-menu-item:hover,.vjs-menu li.vjs-menu-item:focus,.vjs-menu li.vjs-menu-item:hover{background-color:#73859f;background-color:rgba(115,133,159,.5)}.js-focus-visible .vjs-menu li.vjs-selected:hover,.vjs-menu li.vjs-selected,.vjs-menu li.vjs-selected:focus,.vjs-menu li.vjs-selected:hover{background-color:#fff;color:#2b333f}.js-focus-visible .vjs-menu :not(.vjs-selected):focus:not(.focus-visible),.video-js .vjs-menu :not(.vjs-selected):focus:not(:focus-visible){background:0 0}.vjs-menu li.vjs-menu-title{text-align:center;text-transform:uppercase;font-size:1em;line-height:2em;padding:0;margin:0 0 .3em 0;font-weight:700;cursor:default}.vjs-menu-button-popup .vjs-menu{display:none;position:absolute;bottom:0;width:10em;left:-3em;height:0;margin-bottom:1.5em;border-top-color:rgba(43,51,63,.7)}.vjs-menu-button-popup .vjs-menu .vjs-menu-content{background-color:#2b333f;background-color:rgba(43,51,63,.7);position:absolute;width:100%;bottom:1.5em;max-height:15em}.vjs-layout-tiny .vjs-menu-button-popup .vjs-menu .vjs-menu-content,.vjs-layout-x-small .vjs-menu-button-popup .vjs-menu .vjs-menu-content{max-height:5em}.vjs-layout-small .vjs-menu-button-popup .vjs-menu .vjs-menu-content{max-height:10em}.vjs-layout-medium .vjs-menu-button-popup .vjs-menu .vjs-menu-content{max-height:14em}.vjs-layout-huge .vjs-menu-button-popup .vjs-menu .vjs-menu-content,.vjs-layout-large .vjs-menu-button-popup .vjs-menu .vjs-menu-content,.vjs-layout-x-large .vjs-menu-button-popup .vjs-menu .vjs-menu-content{max-height:25em}.vjs-menu-button-popup .vjs-menu.vjs-lock-showing,.vjs-workinghover .vjs-menu-button-popup.vjs-hover .vjs-menu{display:block}.video-js .vjs-menu-button-inline{transition:all .4s;overflow:hidden}.video-js .vjs-menu-button-inline:before{width:2.222222222em}.video-js .vjs-menu-button-inline.vjs-slider-active,.video-js .vjs-menu-button-inline:focus,.video-js .vjs-menu-button-inline:hover,.video-js.vjs-no-flex .vjs-menu-button-inline{width:12em}.vjs-menu-button-inline .vjs-menu{opacity:0;height:100%;width:auto;position:absolute;left:4em;top:0;padding:0;margin:0;transition:all .4s}.vjs-menu-button-inline.vjs-slider-active .vjs-menu,.vjs-menu-button-inline:focus .vjs-menu,.vjs-menu-button-inline:hover .vjs-menu{display:block;opacity:1}.vjs-no-flex .vjs-menu-button-inline .vjs-menu{display:block;opacity:1;position:relative;width:auto}.vjs-no-flex .vjs-menu-button-inline.vjs-slider-active .vjs-menu,.vjs-no-flex .vjs-menu-button-inline:focus .vjs-menu,.vjs-no-flex .vjs-menu-button-inline:hover .vjs-menu{width:auto}.vjs-menu-button-inline .vjs-menu-content{width:auto;height:100%;margin:0;overflow:hidden}.video-js .vjs-control-bar{display:none;width:100%;position:absolute;bottom:0;left:0;right:0;height:3em;background-color:#2b333f;background-color:rgba(43,51,63,.7)}.vjs-has-started .vjs-control-bar{display:flex;visibility:visible;opacity:1;transition:visibility .1s,opacity .1s}.vjs-has-started.vjs-user-inactive.vjs-playing .vjs-control-bar{visibility:visible;opacity:0;transition:visibility 1s,opacity 1s}.vjs-controls-disabled .vjs-control-bar,.vjs-error .vjs-control-bar,.vjs-using-native-controls .vjs-control-bar{display:none!important}.vjs-audio.vjs-has-started.vjs-user-inactive.vjs-playing .vjs-control-bar{opacity:1;visibility:visible}.vjs-has-started.vjs-no-flex .vjs-control-bar{display:table}.video-js .vjs-control{position:relative;text-align:center;margin:0;padding:0;height:100%;width:4em;flex:none}.vjs-button>.vjs-icon-placeholder:before{font-size:1.8em;line-height:1.67}.vjs-button>.vjs-icon-placeholder{display:block}.video-js .vjs-control:focus,.video-js .vjs-control:focus:before,.video-js .vjs-control:hover:before{text-shadow:0 0 1em #fff}.video-js .vjs-control-text{border:0;clip:rect(0 0 0 0);height:1px;overflow:hidden;padding:0;position:absolute;width:1px}.vjs-no-flex .vjs-control{display:table-cell;vertical-align:middle}.video-js .vjs-custom-control-spacer{display:none}.video-js .vjs-progress-control{cursor:pointer;flex:auto;display:flex;align-items:center;min-width:4em;touch-action:none}.video-js .vjs-progress-control.disabled{cursor:default}.vjs-live .vjs-progress-control{display:none}.vjs-liveui .vjs-progress-control{display:flex;align-items:center}.vjs-no-flex .vjs-progress-control{width:auto}.video-js .vjs-progress-holder{flex:auto;transition:all .2s;height:.3em}.video-js .vjs-progress-control .vjs-progress-holder{margin:0 10px}.video-js .vjs-progress-control:hover .vjs-progress-holder{font-size:1.6666666667em}.video-js .vjs-progress-control:hover .vjs-progress-holder.disabled{font-size:1em}.video-js .vjs-progress-holder .vjs-load-progress,.video-js .vjs-progress-holder .vjs-load-progress div,.video-js .vjs-progress-holder .vjs-play-progress{position:absolute;display:block;height:100%;margin:0;padding:0;width:0}.video-js .vjs-play-progress{background-color:#fff}.video-js .vjs-play-progress:before{font-size:.9em;position:absolute;right:-.5em;top:-.3333333333em;z-index:1}.video-js .vjs-load-progress{background:rgba(115,133,159,.5)}.video-js .vjs-load-progress div{background:rgba(115,133,159,.75)}.video-js .vjs-time-tooltip{background-color:#fff;background-color:rgba(255,255,255,.8);border-radius:.3em;color:#000;float:right;font-family:Arial,Helvetica,sans-serif;font-size:1em;padding:6px 8px 8px 8px;pointer-events:none;position:absolute;top:-3.4em;visibility:hidden;z-index:1}.video-js .vjs-progress-holder:focus .vjs-time-tooltip{display:none}.video-js .vjs-progress-control:hover .vjs-progress-holder:focus .vjs-time-tooltip,.video-js .vjs-progress-control:hover .vjs-time-tooltip{display:block;font-size:.6em;visibility:visible}.video-js .vjs-progress-control.disabled:hover .vjs-time-tooltip{font-size:1em}.video-js .vjs-progress-control .vjs-mouse-display{display:none;position:absolute;width:1px;height:100%;background-color:#000;z-index:1}.vjs-no-flex .vjs-progress-control .vjs-mouse-display{z-index:0}.video-js .vjs-progress-control:hover .vjs-mouse-display{display:block}.video-js.vjs-user-inactive .vjs-progress-control .vjs-mouse-display{visibility:hidden;opacity:0;transition:visibility 1s,opacity 1s}.video-js.vjs-user-inactive.vjs-no-flex .vjs-progress-control .vjs-mouse-display{display:none}.vjs-mouse-display .vjs-time-tooltip{color:#fff;background-color:#000;background-color:rgba(0,0,0,.8)}.video-js .vjs-slider{position:relative;cursor:pointer;padding:0;margin:0 .45em 0 .45em;-webkit-touch-callout:none;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;background-color:#73859f;background-color:rgba(115,133,159,.5)}.video-js .vjs-slider.disabled{cursor:default}.video-js .vjs-slider:focus{text-shadow:0 0 1em #fff;box-shadow:0 0 1em #fff}.video-js .vjs-mute-control{cursor:pointer;flex:none}.video-js .vjs-volume-control{cursor:pointer;margin-right:1em;display:flex}.video-js .vjs-volume-control.vjs-volume-horizontal{width:5em}.video-js .vjs-volume-panel .vjs-volume-control{visibility:visible;opacity:0;width:1px;height:1px;margin-left:-1px}.video-js .vjs-volume-panel{transition:width 1s}.video-js .vjs-volume-panel .vjs-volume-control.vjs-slider-active,.video-js .vjs-volume-panel .vjs-volume-control:active,.video-js .vjs-volume-panel.vjs-hover .vjs-mute-control~.vjs-volume-control,.video-js .vjs-volume-panel.vjs-hover .vjs-volume-control,.video-js .vjs-volume-panel:active .vjs-volume-control,.video-js .vjs-volume-panel:focus .vjs-volume-control{visibility:visible;opacity:1;position:relative;transition:visibility .1s,opacity .1s,height .1s,width .1s,left 0s,top 0s}.video-js .vjs-volume-panel .vjs-volume-control.vjs-slider-active.vjs-volume-horizontal,.video-js .vjs-volume-panel .vjs-volume-control:active.vjs-volume-horizontal,.video-js .vjs-volume-panel.vjs-hover .vjs-mute-control~.vjs-volume-control.vjs-volume-horizontal,.video-js .vjs-volume-panel.vjs-hover .vjs-volume-control.vjs-volume-horizontal,.video-js .vjs-volume-panel:active .vjs-volume-control.vjs-volume-horizontal,.video-js .vjs-volume-panel:focus .vjs-volume-control.vjs-volume-horizontal{width:5em;height:3em;margin-right:0}.video-js .vjs-volume-panel .vjs-volume-control.vjs-slider-active.vjs-volume-vertical,.video-js .vjs-volume-panel .vjs-volume-control:active.vjs-volume-vertical,.video-js .vjs-volume-panel.vjs-hover .vjs-mute-control~.vjs-volume-control.vjs-volume-vertical,.video-js .vjs-volume-panel.vjs-hover .vjs-volume-control.vjs-volume-vertical,.video-js .vjs-volume-panel:active .vjs-volume-control.vjs-volume-vertical,.video-js .vjs-volume-panel:focus .vjs-volume-control.vjs-volume-vertical{left:-3.5em;transition:left 0s}.video-js .vjs-volume-panel.vjs-volume-panel-horizontal.vjs-hover,.video-js .vjs-volume-panel.vjs-volume-panel-horizontal.vjs-slider-active,.video-js .vjs-volume-panel.vjs-volume-panel-horizontal:active{width:10em;transition:width .1s}.video-js .vjs-volume-panel.vjs-volume-panel-horizontal.vjs-mute-toggle-only{width:4em}.video-js .vjs-volume-panel .vjs-volume-control.vjs-volume-vertical{height:8em;width:3em;left:-3000em;transition:visibility 1s,opacity 1s,height 1s 1s,width 1s 1s,left 1s 1s,top 1s 1s}.video-js .vjs-volume-panel .vjs-volume-control.vjs-volume-horizontal{transition:visibility 1s,opacity 1s,height 1s 1s,width 1s,left 1s 1s,top 1s 1s}.video-js.vjs-no-flex .vjs-volume-panel .vjs-volume-control.vjs-volume-horizontal{width:5em;height:3em;visibility:visible;opacity:1;position:relative;transition:none}.video-js.vjs-no-flex .vjs-volume-control.vjs-volume-vertical,.video-js.vjs-no-flex .vjs-volume-panel .vjs-volume-control.vjs-volume-vertical{position:absolute;bottom:3em;left:.5em}.video-js .vjs-volume-panel{display:flex}.video-js .vjs-volume-bar{margin:1.35em .45em}.vjs-volume-bar.vjs-slider-horizontal{width:5em;height:.3em}.vjs-volume-bar.vjs-slider-vertical{width:.3em;height:5em;margin:1.35em auto}.video-js .vjs-volume-level{position:absolute;bottom:0;left:0;background-color:#fff}.video-js .vjs-volume-level:before{position:absolute;font-size:.9em;z-index:1}.vjs-slider-vertical .vjs-volume-level{width:.3em}.vjs-slider-vertical .vjs-volume-level:before{top:-.5em;left:-.3em;z-index:1}.vjs-slider-horizontal .vjs-volume-level{height:.3em}.vjs-slider-horizontal .vjs-volume-level:before{top:-.3em;right:-.5em}.video-js .vjs-volume-panel.vjs-volume-panel-vertical{width:4em}.vjs-volume-bar.vjs-slider-vertical .vjs-volume-level{height:100%}.vjs-volume-bar.vjs-slider-horizontal .vjs-volume-level{width:100%}.video-js .vjs-volume-vertical{width:3em;height:8em;bottom:8em;background-color:#2b333f;background-color:rgba(43,51,63,.7)}.video-js .vjs-volume-horizontal .vjs-menu{left:-2em}.video-js .vjs-volume-tooltip{background-color:#fff;background-color:rgba(255,255,255,.8);border-radius:.3em;color:#000;float:right;font-family:Arial,Helvetica,sans-serif;font-size:1em;padding:6px 8px 8px 8px;pointer-events:none;position:absolute;top:-3.4em;visibility:hidden;z-index:1}.video-js .vjs-volume-control:hover .vjs-progress-holder:focus .vjs-volume-tooltip,.video-js .vjs-volume-control:hover .vjs-volume-tooltip{display:block;font-size:1em;visibility:visible}.video-js .vjs-volume-vertical:hover .vjs-progress-holder:focus .vjs-volume-tooltip,.video-js .vjs-volume-vertical:hover .vjs-volume-tooltip{left:1em;top:-12px}.video-js .vjs-volume-control.disabled:hover .vjs-volume-tooltip{font-size:1em}.video-js .vjs-volume-control .vjs-mouse-display{display:none;position:absolute;width:100%;height:1px;background-color:#000;z-index:1}.video-js .vjs-volume-horizontal .vjs-mouse-display{width:1px;height:100%}.vjs-no-flex .vjs-volume-control .vjs-mouse-display{z-index:0}.video-js .vjs-volume-control:hover .vjs-mouse-display{display:block}.video-js.vjs-user-inactive .vjs-volume-control .vjs-mouse-display{visibility:hidden;opacity:0;transition:visibility 1s,opacity 1s}.video-js.vjs-user-inactive.vjs-no-flex .vjs-volume-control .vjs-mouse-display{display:none}.vjs-mouse-display .vjs-volume-tooltip{color:#fff;background-color:#000;background-color:rgba(0,0,0,.8)}.vjs-poster{display:inline-block;vertical-align:middle;background-repeat:no-repeat;background-position:50% 50%;background-size:contain;background-color:#000;cursor:pointer;margin:0;padding:0;position:absolute;top:0;right:0;bottom:0;left:0;height:100%}.vjs-has-started .vjs-poster{display:none}.vjs-audio.vjs-has-started .vjs-poster{display:block}.vjs-using-native-controls .vjs-poster{display:none}.video-js .vjs-live-control{display:flex;align-items:flex-start;flex:auto;font-size:1em;line-height:3em}.vjs-no-flex .vjs-live-control{display:table-cell;width:auto;text-align:left}.video-js.vjs-liveui .vjs-live-control,.video-js:not(.vjs-live) .vjs-live-control{display:none}.video-js .vjs-seek-to-live-control{align-items:center;cursor:pointer;flex:none;display:inline-flex;height:100%;padding-left:.5em;padding-right:.5em;font-size:1em;line-height:3em;width:auto;min-width:4em}.vjs-no-flex .vjs-seek-to-live-control{display:table-cell;width:auto;text-align:left}.video-js.vjs-live:not(.vjs-liveui) .vjs-seek-to-live-control,.video-js:not(.vjs-live) .vjs-seek-to-live-control{display:none}.vjs-seek-to-live-control.vjs-control.vjs-at-live-edge{cursor:auto}.vjs-seek-to-live-control .vjs-icon-placeholder{margin-right:.5em;color:#888}.vjs-seek-to-live-control.vjs-control.vjs-at-live-edge .vjs-icon-placeholder{color:red}.video-js .vjs-time-control{flex:none;font-size:1em;line-height:3em;min-width:2em;width:auto;padding-left:1em;padding-right:1em}.vjs-live .vjs-time-control{display:none}.video-js .vjs-current-time,.vjs-no-flex .vjs-current-time{display:none}.video-js .vjs-duration,.vjs-no-flex .vjs-duration{display:none}.vjs-time-divider{display:none;line-height:3em}.vjs-live .vjs-time-divider{display:none}.video-js .vjs-play-control{cursor:pointer}.video-js .vjs-play-control .vjs-icon-placeholder{flex:none}.vjs-text-track-display{position:absolute;bottom:3em;left:0;right:0;top:0;pointer-events:none}.video-js.vjs-user-inactive.vjs-playing .vjs-text-track-display{bottom:1em}.video-js .vjs-text-track{font-size:1.4em;text-align:center;margin-bottom:.1em}.vjs-subtitles{color:#fff}.vjs-captions{color:#fc6}.vjs-tt-cue{display:block}video::-webkit-media-text-track-display{transform:translateY(-3em)}.video-js.vjs-user-inactive.vjs-playing video::-webkit-media-text-track-display{transform:translateY(-1.5em)}.video-js .vjs-picture-in-picture-control{cursor:pointer;flex:none}.video-js .vjs-fullscreen-control{cursor:pointer;flex:none}.vjs-playback-rate .vjs-playback-rate-value,.vjs-playback-rate>.vjs-menu-button{position:absolute;top:0;left:0;width:100%;height:100%}.vjs-playback-rate .vjs-playback-rate-value{pointer-events:none;font-size:1.5em;line-height:2;text-align:center}.vjs-playback-rate .vjs-menu{width:4em;left:0}.vjs-error .vjs-error-display .vjs-modal-dialog-content{font-size:1.4em;text-align:center}.vjs-error .vjs-error-display:before{color:#fff;content:\"X\";font-family:Arial,Helvetica,sans-serif;font-size:4em;left:0;line-height:1;margin-top:-.5em;position:absolute;text-shadow:.05em .05em .1em #000;text-align:center;top:50%;vertical-align:middle;width:100%}.vjs-loading-spinner{display:none;position:absolute;top:50%;left:50%;margin:-25px 0 0 -25px;opacity:.85;text-align:left;border:6px solid rgba(43,51,63,.7);box-sizing:border-box;background-clip:padding-box;width:50px;height:50px;border-radius:25px;visibility:hidden}.vjs-seeking .vjs-loading-spinner,.vjs-waiting .vjs-loading-spinner{display:block;-webkit-animation:vjs-spinner-show 0s linear .3s forwards;animation:vjs-spinner-show 0s linear .3s forwards}.vjs-loading-spinner:after,.vjs-loading-spinner:before{content:\"\";position:absolute;margin:-6px;box-sizing:inherit;width:inherit;height:inherit;border-radius:inherit;opacity:1;border:inherit;border-color:transparent;border-top-color:#fff}.vjs-seeking .vjs-loading-spinner:after,.vjs-seeking .vjs-loading-spinner:before,.vjs-waiting .vjs-loading-spinner:after,.vjs-waiting .vjs-loading-spinner:before{-webkit-animation:vjs-spinner-spin 1.1s cubic-bezier(.6,.2,0,.8) infinite,vjs-spinner-fade 1.1s linear infinite;animation:vjs-spinner-spin 1.1s cubic-bezier(.6,.2,0,.8) infinite,vjs-spinner-fade 1.1s linear infinite}.vjs-seeking .vjs-loading-spinner:before,.vjs-waiting .vjs-loading-spinner:before{border-top-color:#fff}.vjs-seeking .vjs-loading-spinner:after,.vjs-waiting .vjs-loading-spinner:after{border-top-color:#fff;-webkit-animation-delay:.44s;animation-delay:.44s}@keyframes vjs-spinner-show{to{visibility:visible}}@-webkit-keyframes vjs-spinner-show{to{visibility:visible}}@keyframes vjs-spinner-spin{100%{transform:rotate(360deg)}}@-webkit-keyframes vjs-spinner-spin{100%{-webkit-transform:rotate(360deg)}}@keyframes vjs-spinner-fade{0%{border-top-color:#73859f}20%{border-top-color:#73859f}35%{border-top-color:#fff}60%{border-top-color:#73859f}100%{border-top-color:#73859f}}@-webkit-keyframes vjs-spinner-fade{0%{border-top-color:#73859f}20%{border-top-color:#73859f}35%{border-top-color:#fff}60%{border-top-color:#73859f}100%{border-top-color:#73859f}}.vjs-chapters-button .vjs-menu ul{width:24em}.video-js .vjs-subs-caps-button+.vjs-menu .vjs-captions-menu-item .vjs-menu-item-text .vjs-icon-placeholder{vertical-align:middle;display:inline-block;margin-bottom:-.1em}.video-js .vjs-subs-caps-button+.vjs-menu .vjs-captions-menu-item .vjs-menu-item-text .vjs-icon-placeholder:before{font-family:VideoJS;content:\"\";font-size:1.5em;line-height:inherit}.video-js .vjs-audio-button+.vjs-menu .vjs-main-desc-menu-item .vjs-menu-item-text .vjs-icon-placeholder{vertical-align:middle;display:inline-block;margin-bottom:-.1em}.video-js .vjs-audio-button+.vjs-menu .vjs-main-desc-menu-item .vjs-menu-item-text .vjs-icon-placeholder:before{font-family:VideoJS;content:\" \";font-size:1.5em;line-height:inherit}.video-js.vjs-layout-small .vjs-audio-button,.video-js.vjs-layout-small .vjs-captions-button,.video-js.vjs-layout-small .vjs-chapters-button,.video-js.vjs-layout-small .vjs-current-time,.video-js.vjs-layout-small .vjs-descriptions-button,.video-js.vjs-layout-small .vjs-duration,.video-js.vjs-layout-small .vjs-playback-rate,.video-js.vjs-layout-small .vjs-remaining-time,.video-js.vjs-layout-small .vjs-subtitles-button,.video-js.vjs-layout-small .vjs-time-divider,.video-js.vjs-layout-small .vjs-volume-control,.video-js.vjs-layout-tiny .vjs-audio-button,.video-js.vjs-layout-tiny .vjs-captions-button,.video-js.vjs-layout-tiny .vjs-chapters-button,.video-js.vjs-layout-tiny .vjs-current-time,.video-js.vjs-layout-tiny .vjs-descriptions-button,.video-js.vjs-layout-tiny .vjs-duration,.video-js.vjs-layout-tiny .vjs-playback-rate,.video-js.vjs-layout-tiny .vjs-remaining-time,.video-js.vjs-layout-tiny .vjs-subtitles-button,.video-js.vjs-layout-tiny .vjs-time-divider,.video-js.vjs-layout-tiny .vjs-volume-control,.video-js.vjs-layout-x-small .vjs-audio-button,.video-js.vjs-layout-x-small .vjs-captions-button,.video-js.vjs-layout-x-small .vjs-chapters-button,.video-js.vjs-layout-x-small .vjs-current-time,.video-js.vjs-layout-x-small .vjs-descriptions-button,.video-js.vjs-layout-x-small .vjs-duration,.video-js.vjs-layout-x-small .vjs-playback-rate,.video-js.vjs-layout-x-small .vjs-remaining-time,.video-js.vjs-layout-x-small .vjs-subtitles-button,.video-js.vjs-layout-x-small .vjs-time-divider,.video-js.vjs-layout-x-small .vjs-volume-control{display:none!important}.video-js.vjs-layout-small .vjs-volume-panel.vjs-volume-panel-horizontal.vjs-slider-active,.video-js.vjs-layout-small .vjs-volume-panel.vjs-volume-panel-horizontal:active,.video-js.vjs-layout-small .vjs-volume-panel.vjs-volume-panel-horizontal:hover,.video-js.vjs-layout-tiny .vjs-volume-panel.vjs-volume-panel-horizontal.vjs-slider-active,.video-js.vjs-layout-tiny .vjs-volume-panel.vjs-volume-panel-horizontal:active,.video-js.vjs-layout-tiny .vjs-volume-panel.vjs-volume-panel-horizontal:hover,.video-js.vjs-layout-x-small .vjs-volume-panel.vjs-volume-panel-horizontal.vjs-slider-active,.video-js.vjs-layout-x-small .vjs-volume-panel.vjs-volume-panel-horizontal:active,.video-js.vjs-layout-x-small .vjs-volume-panel.vjs-volume-panel-horizontal:hover{width:auto;width:initial}.video-js.vjs-layout-tiny .vjs-subs-caps-button,.video-js.vjs-layout-x-small:not(.vjs-live) .vjs-subs-caps-button,.video-js.vjs-layout-x-small:not(.vjs-liveui) .vjs-subs-caps-button{display:none}.video-js.vjs-layout-tiny .vjs-custom-control-spacer,.video-js.vjs-layout-x-small.vjs-liveui .vjs-custom-control-spacer{flex:auto;display:block}.video-js.vjs-layout-tiny.vjs-no-flex .vjs-custom-control-spacer,.video-js.vjs-layout-x-small.vjs-liveui.vjs-no-flex .vjs-custom-control-spacer{width:auto}.video-js.vjs-layout-tiny .vjs-progress-control,.video-js.vjs-layout-x-small.vjs-liveui .vjs-progress-control{display:none}.vjs-modal-dialog.vjs-text-track-settings{background-color:#2b333f;background-color:rgba(43,51,63,.75);color:#fff;height:70%}.vjs-text-track-settings .vjs-modal-dialog-content{display:table}.vjs-text-track-settings .vjs-track-settings-colors,.vjs-text-track-settings .vjs-track-settings-controls,.vjs-text-track-settings .vjs-track-settings-font{display:table-cell}.vjs-text-track-settings .vjs-track-settings-controls{text-align:right;vertical-align:bottom}@supports (display:grid){.vjs-text-track-settings .vjs-modal-dialog-content{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr;padding:20px 24px 0 24px}.vjs-track-settings-controls .vjs-default-button{margin-bottom:20px}.vjs-text-track-settings .vjs-track-settings-controls{grid-column:1/-1}.vjs-layout-small .vjs-text-track-settings .vjs-modal-dialog-content,.vjs-layout-tiny .vjs-text-track-settings .vjs-modal-dialog-content,.vjs-layout-x-small .vjs-text-track-settings .vjs-modal-dialog-content{grid-template-columns:1fr}}.vjs-track-setting>select{margin-right:1em;margin-bottom:.5em}.vjs-text-track-settings fieldset{margin:5px;padding:3px;border:none}.vjs-text-track-settings fieldset span{display:inline-block}.vjs-text-track-settings fieldset span>select{max-width:7.3em}.vjs-text-track-settings legend{color:#fff;margin:0 0 5px 0}.vjs-text-track-settings .vjs-label{position:absolute;clip:rect(1px 1px 1px 1px);clip:rect(1px,1px,1px,1px);display:block;margin:0 0 5px 0;padding:0;border:0;height:1px;width:1px;overflow:hidden}.vjs-track-settings-controls button:active,.vjs-track-settings-controls button:focus{outline-style:solid;outline-width:medium;background-image:linear-gradient(0deg,#fff 88%,#73859f 100%)}.vjs-track-settings-controls button:hover{color:rgba(43,51,63,.75)}.vjs-track-settings-controls button{background-color:#fff;background-image:linear-gradient(-180deg,#fff 88%,#73859f 100%);color:#2b333f;cursor:pointer;border-radius:2px}.vjs-track-settings-controls .vjs-default-button{margin-right:1em}@media print{.video-js>:not(.vjs-tech):not(.vjs-poster){visibility:hidden}}.vjs-resize-manager{position:absolute;top:0;left:0;width:100%;height:100%;border:none;z-index:-1000}.js-focus-visible .video-js :focus:not(.focus-visible){outline:0}.video-js :focus:not(:focus-visible){outline:0}", ""]);
+// Exports
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);
+
+
+/***/ }),
+
+/***/ "./node_modules/css-loader/dist/cjs.js??clonedRuleSet-9[0].rules[0].use[1]!./node_modules/postcss-loader/dist/cjs.js??clonedRuleSet-9[0].rules[0].use[2]!./node_modules/videojs-theater-mode/dist/videojs.theaterMode.css":
+/*!********************************************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/css-loader/dist/cjs.js??clonedRuleSet-9[0].rules[0].use[1]!./node_modules/postcss-loader/dist/cjs.js??clonedRuleSet-9[0].rules[0].use[2]!./node_modules/videojs-theater-mode/dist/videojs.theaterMode.css ***!
+  \********************************************************************************************************************************************************************************************************************************/
+/***/ ((module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var _css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../css-loader/dist/runtime/api.js */ "./node_modules/css-loader/dist/runtime/api.js");
+/* harmony import */ var _css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_0__);
+// Imports
+
+var ___CSS_LOADER_EXPORT___ = _css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_0___default()(function(i){return i[1]});
+// Module
+___CSS_LOADER_EXPORT___.push([module.id, "@font-face { font-family: 'videojs-theaterMode'; speak: none; src: url(\"data:application/font-sfnt;base64,AAEAAAALAIAAAwAwT1MvMg8SB2gAAAC8AAAAYGNtYXAXVtKIAAABHAAAAFRnYXNwAAAAEAAAAXAAAAAIZ2x5ZpVu9XQAAAF4AAAAnGhlYWQSAf6DAAACFAAAADZoaGVhC8IHxwAAAkwAAAAkaG10eBO3AAAAAAJwAAAAGGxvY2EAdgBKAAACiAAAAA5tYXhwAAkACwAAApgAAAAgbmFtZZlKCfsAAAK4AAABhnBvc3QAAwAAAAAEQAAAACAAAwU9AZAABQAAApkCzAAAAI8CmQLMAAAB6wAzAQkAAAAAAAAAAAAAAAAAAAABEAAAAAAAAAAAAAAAAAAAAABAAADpAQPA/8AAQAPAAEAAAAABAAAAAAAAAAAAAAAgAAAAAAADAAAAAwAAABwAAQADAAAAHAADAAEAAAAcAAQAOAAAAAoACAACAAIAAQAg6QH//f//AAAAAAAg6QD//f//AAH/4xcEAAMAAQAAAAAAAAAAAAAAAQAB//8ADwABAAAAAAAAAAAAAgAANzkBAAAAAAEAAAAAAAAAAAACAAA3OQEAAAAAAQAAAAAAAAAAAAIAADc5AQAAAAACAAD/wAW3A8AABAAIAAABESERITchESEFJfttBJOS+kkFtwMu/SQC3JL8AAAAAAACAAD/wAgAA8AABAAIAAABESERITchESEHM/maBmbN+AAIAALz/ZoCZs38AAAAAAABAAAAAAAAL/heSV8PPPUACwQAAAAAANVx3QMAAAAA1XHdAwAA/8AIAAPAAAAACAACAAAAAAAAAAEAAAPA/8AAAAgAAAAAAAgAAAEAAAAAAAAAAAAAAAAAAAAGBAAAAAAAAAAAAAAAAgAAAAW3AAAIAAAAAAAAAAAKABQAHgA2AE4AAAABAAAABgAJAAIAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAADgCuAAEAAAAAAAEABwAAAAEAAAAAAAIABwBgAAEAAAAAAAMABwA2AAEAAAAAAAQABwB1AAEAAAAAAAUACwAVAAEAAAAAAAYABwBLAAEAAAAAAAoAGgCKAAMAAQQJAAEADgAHAAMAAQQJAAIADgBnAAMAAQQJAAMADgA9AAMAAQQJAAQADgB8AAMAAQQJAAUAFgAgAAMAAQQJAAYADgBSAAMAAQQJAAoANACkaWNvbW9vbgBpAGMAbwBtAG8AbwBuVmVyc2lvbiAxLjAAVgBlAHIAcwBpAG8AbgAgADEALgAwaWNvbW9vbgBpAGMAbwBtAG8AbwBuaWNvbW9vbgBpAGMAbwBtAG8AbwBuUmVndWxhcgBSAGUAZwB1AGwAYQByaWNvbW9vbgBpAGMAbwBtAG8AbwBuRm9udCBnZW5lcmF0ZWQgYnkgSWNvTW9vbi4ARgBvAG4AdAAgAGcAZQBuAGUAcgBhAHQAZQBkACAAYgB5ACAASQBjAG8ATQBvAG8AbgAuAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\") format(\"truetype\"), url(\"data:application/font-woff;base64,d09GRgABAAAAAASsAAsAAAAABGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABPUy8yAAABCAAAAGAAAABgDxIHaGNtYXAAAAFoAAAAVAAAAFQXVtKIZ2FzcAAAAbwAAAAIAAAACAAAABBnbHlmAAABxAAAAJwAAACclW71dGhlYWQAAAJgAAAANgAAADYSAf6DaGhlYQAAApgAAAAkAAAAJAvCB8dobXR4AAACvAAAABgAAAAYE7cAAGxvY2EAAALUAAAADgAAAA4AdgBKbWF4cAAAAuQAAAAgAAAAIAAJAAtuYW1lAAADBAAAAYYAAAGGmUoJ+3Bvc3QAAASMAAAAIAAAACAAAwAAAAMFPQGQAAUAAAKZAswAAACPApkCzAAAAesAMwEJAAAAAAAAAAAAAAAAAAAAARAAAAAAAAAAAAAAAAAAAAAAQAAA6QEDwP/AAEADwABAAAAAAQAAAAAAAAAAAAAAIAAAAAAAAwAAAAMAAAAcAAEAAwAAABwAAwABAAAAHAAEADgAAAAKAAgAAgACAAEAIOkB//3//wAAAAAAIOkA//3//wAB/+MXBAADAAEAAAAAAAAAAAAAAAEAAf//AA8AAQAAAAAAAAAAAAIAADc5AQAAAAABAAAAAAAAAAAAAgAANzkBAAAAAAEAAAAAAAAAAAACAAA3OQEAAAAAAgAA/8AFtwPAAAQACAAAAREhESE3IREhBSX7bQSTkvpJBbcDLv0kAtyS/AAAAAAAAgAA/8AIAAPAAAQACAAAAREhESE3IREhBzP5mgZmzfgACAAC8/2aAmbN/AAAAAAAAQAAAAAAAC/4XklfDzz1AAsEAAAAAADVcd0DAAAAANVx3QMAAP/ACAADwAAAAAgAAgAAAAAAAAABAAADwP/AAAAIAAAAAAAIAAABAAAAAAAAAAAAAAAAAAAABgQAAAAAAAAAAAAAAAIAAAAFtwAACAAAAAAAAAAACgAUAB4ANgBOAAAAAQAAAAYACQACAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAA4ArgABAAAAAAABAAcAAAABAAAAAAACAAcAYAABAAAAAAADAAcANgABAAAAAAAEAAcAdQABAAAAAAAFAAsAFQABAAAAAAAGAAcASwABAAAAAAAKABoAigADAAEECQABAA4ABwADAAEECQACAA4AZwADAAEECQADAA4APQADAAEECQAEAA4AfAADAAEECQAFABYAIAADAAEECQAGAA4AUgADAAEECQAKADQApGljb21vb24AaQBjAG8AbQBvAG8AblZlcnNpb24gMS4wAFYAZQByAHMAaQBvAG4AIAAxAC4AMGljb21vb24AaQBjAG8AbQBvAG8Abmljb21vb24AaQBjAG8AbQBvAG8AblJlZ3VsYXIAUgBlAGcAdQBsAGEAcmljb21vb24AaQBjAG8AbQBvAG8AbkZvbnQgZ2VuZXJhdGVkIGJ5IEljb01vb24uAEYAbwBuAHQAIABnAGUAbgBlAHIAYQB0AGUAZAAgAGIAeQAgAEkAYwBvAE0AbwBvAG4ALgAAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=\") format(\"woff\"); font-weight: normal; font-style: normal; font-variant: normal; text-transform: none; line-height: 1; /* Better Font Rendering =========== */ -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }\n\n.vjs-theater-mode-control-open, .vjs-theater-mode-control-close { font-family: 'videojs-theaterMode'; float: right; cursor: pointer; }\n\n.video-js .vjs-theater-mode-control-open.vjs-control:before { content: \"\\e901\"; font-size: 1.1em; line-height: 2.9em; }\n\n.video-js .vjs-theater-mode-control-close.vjs-control:before { content: \"\\e900\"; font-size: 1.4em; line-height: 2.2em; }\n", ""]);
 // Exports
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);
 
@@ -46346,6 +46692,36 @@ function SafeParseTuple(obj, reviver) {
 
 /***/ }),
 
+/***/ "./node_modules/@hola.org/videojs-thumbnails/videojs.thumbnails.css":
+/*!**************************************************************************!*\
+  !*** ./node_modules/@hola.org/videojs-thumbnails/videojs.thumbnails.css ***!
+  \**************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var _style_loader_dist_runtime_injectStylesIntoStyleTag_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! !../../style-loader/dist/runtime/injectStylesIntoStyleTag.js */ "./node_modules/style-loader/dist/runtime/injectStylesIntoStyleTag.js");
+/* harmony import */ var _style_loader_dist_runtime_injectStylesIntoStyleTag_js__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_style_loader_dist_runtime_injectStylesIntoStyleTag_js__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _css_loader_dist_cjs_js_clonedRuleSet_9_0_rules_0_use_1_postcss_loader_dist_cjs_js_clonedRuleSet_9_0_rules_0_use_2_videojs_thumbnails_css__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! !!../../css-loader/dist/cjs.js??clonedRuleSet-9[0].rules[0].use[1]!../../postcss-loader/dist/cjs.js??clonedRuleSet-9[0].rules[0].use[2]!./videojs.thumbnails.css */ "./node_modules/css-loader/dist/cjs.js??clonedRuleSet-9[0].rules[0].use[1]!./node_modules/postcss-loader/dist/cjs.js??clonedRuleSet-9[0].rules[0].use[2]!./node_modules/@hola.org/videojs-thumbnails/videojs.thumbnails.css");
+
+            
+
+var options = {};
+
+options.insert = "head";
+options.singleton = false;
+
+var update = _style_loader_dist_runtime_injectStylesIntoStyleTag_js__WEBPACK_IMPORTED_MODULE_0___default()(_css_loader_dist_cjs_js_clonedRuleSet_9_0_rules_0_use_1_postcss_loader_dist_cjs_js_clonedRuleSet_9_0_rules_0_use_2_videojs_thumbnails_css__WEBPACK_IMPORTED_MODULE_1__.default, options);
+
+
+
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (_css_loader_dist_cjs_js_clonedRuleSet_9_0_rules_0_use_1_postcss_loader_dist_cjs_js_clonedRuleSet_9_0_rules_0_use_2_videojs_thumbnails_css__WEBPACK_IMPORTED_MODULE_1__.default.locals || {});
+
+/***/ }),
+
 /***/ "./node_modules/video.js/dist/video-js.min.css":
 /*!*****************************************************!*\
   !*** ./node_modules/video.js/dist/video-js.min.css ***!
@@ -46373,6 +46749,36 @@ var update = _style_loader_dist_runtime_injectStylesIntoStyleTag_js__WEBPACK_IMP
 
 
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (_css_loader_dist_cjs_js_clonedRuleSet_9_0_rules_0_use_1_postcss_loader_dist_cjs_js_clonedRuleSet_9_0_rules_0_use_2_video_js_min_css__WEBPACK_IMPORTED_MODULE_1__.default.locals || {});
+
+/***/ }),
+
+/***/ "./node_modules/videojs-theater-mode/dist/videojs.theaterMode.css":
+/*!************************************************************************!*\
+  !*** ./node_modules/videojs-theater-mode/dist/videojs.theaterMode.css ***!
+  \************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var _style_loader_dist_runtime_injectStylesIntoStyleTag_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! !../../style-loader/dist/runtime/injectStylesIntoStyleTag.js */ "./node_modules/style-loader/dist/runtime/injectStylesIntoStyleTag.js");
+/* harmony import */ var _style_loader_dist_runtime_injectStylesIntoStyleTag_js__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_style_loader_dist_runtime_injectStylesIntoStyleTag_js__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _css_loader_dist_cjs_js_clonedRuleSet_9_0_rules_0_use_1_postcss_loader_dist_cjs_js_clonedRuleSet_9_0_rules_0_use_2_videojs_theaterMode_css__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! !!../../css-loader/dist/cjs.js??clonedRuleSet-9[0].rules[0].use[1]!../../postcss-loader/dist/cjs.js??clonedRuleSet-9[0].rules[0].use[2]!./videojs.theaterMode.css */ "./node_modules/css-loader/dist/cjs.js??clonedRuleSet-9[0].rules[0].use[1]!./node_modules/postcss-loader/dist/cjs.js??clonedRuleSet-9[0].rules[0].use[2]!./node_modules/videojs-theater-mode/dist/videojs.theaterMode.css");
+
+            
+
+var options = {};
+
+options.insert = "head";
+options.singleton = false;
+
+var update = _style_loader_dist_runtime_injectStylesIntoStyleTag_js__WEBPACK_IMPORTED_MODULE_0___default()(_css_loader_dist_cjs_js_clonedRuleSet_9_0_rules_0_use_1_postcss_loader_dist_cjs_js_clonedRuleSet_9_0_rules_0_use_2_videojs_theaterMode_css__WEBPACK_IMPORTED_MODULE_1__.default, options);
+
+
+
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (_css_loader_dist_cjs_js_clonedRuleSet_9_0_rules_0_use_1_postcss_loader_dist_cjs_js_clonedRuleSet_9_0_rules_0_use_2_videojs_theaterMode_css__WEBPACK_IMPORTED_MODULE_1__.default.locals || {});
 
 /***/ }),
 
@@ -102627,6 +103033,1581 @@ module.exports = {
   videoTsToAudioTs: videoTsToAudioTs,
   metadataTsToSeconds: metadataTsToSeconds
 };
+
+
+/***/ }),
+
+/***/ "./node_modules/videojs-contrib-quality-levels/dist/videojs-contrib-quality-levels.es.js":
+/*!***********************************************************************************************!*\
+  !*** ./node_modules/videojs-contrib-quality-levels/dist/videojs-contrib-quality-levels.es.js ***!
+  \***********************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var video_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! video.js */ "./node_modules/video.js/dist/video.es.js");
+/* harmony import */ var global_document__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! global/document */ "./node_modules/global/document.js");
+/* harmony import */ var global_document__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(global_document__WEBPACK_IMPORTED_MODULE_1__);
+/*! @name videojs-contrib-quality-levels @version 2.1.0 @license Apache-2.0 */
+
+
+
+function _inheritsLoose(subClass, superClass) {
+  subClass.prototype = Object.create(superClass.prototype);
+  subClass.prototype.constructor = subClass;
+  subClass.__proto__ = superClass;
+}
+
+function _assertThisInitialized(self) {
+  if (self === void 0) {
+    throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+  }
+
+  return self;
+}
+
+/**
+ * A single QualityLevel.
+ *
+ * interface QualityLevel {
+ *   readonly attribute DOMString id;
+ *            attribute DOMString label;
+ *   readonly attribute long width;
+ *   readonly attribute long height;
+ *   readonly attribute long bitrate;
+ *            attribute boolean enabled;
+ * };
+ *
+ * @class QualityLevel
+ */
+
+var QualityLevel =
+/**
+ * Creates a QualityLevel
+ *
+ * @param {Representation|Object} representation The representation of the quality level
+ * @param {string}   representation.id        Unique id of the QualityLevel
+ * @param {number=}  representation.width     Resolution width of the QualityLevel
+ * @param {number=}  representation.height    Resolution height of the QualityLevel
+ * @param {number}   representation.bandwidth Bitrate of the QualityLevel
+ * @param {Function} representation.enabled   Callback to enable/disable QualityLevel
+ */
+function QualityLevel(representation) {
+  var level = this; // eslint-disable-line
+
+  if (video_js__WEBPACK_IMPORTED_MODULE_0__.default.browser.IS_IE8) {
+    level = global_document__WEBPACK_IMPORTED_MODULE_1___default().createElement('custom');
+
+    for (var prop in QualityLevel.prototype) {
+      if (prop !== 'constructor') {
+        level[prop] = QualityLevel.prototype[prop];
+      }
+    }
+  }
+
+  level.id = representation.id;
+  level.label = level.id;
+  level.width = representation.width;
+  level.height = representation.height;
+  level.bitrate = representation.bandwidth;
+  level.enabled_ = representation.enabled;
+  Object.defineProperty(level, 'enabled', {
+    /**
+     * Get whether the QualityLevel is enabled.
+     *
+     * @return {boolean} True if the QualityLevel is enabled.
+     */
+    get: function get() {
+      return level.enabled_();
+    },
+
+    /**
+     * Enable or disable the QualityLevel.
+     *
+     * @param {boolean} enable true to enable QualityLevel, false to disable.
+     */
+    set: function set(enable) {
+      level.enabled_(enable);
+    }
+  });
+  return level;
+};
+
+/**
+ * A list of QualityLevels.
+ *
+ * interface QualityLevelList : EventTarget {
+ *   getter QualityLevel (unsigned long index);
+ *   readonly attribute unsigned long length;
+ *   readonly attribute long selectedIndex;
+ *
+ *   void addQualityLevel(QualityLevel qualityLevel)
+ *   void removeQualityLevel(QualityLevel remove)
+ *   QualityLevel? getQualityLevelById(DOMString id);
+ *
+ *   attribute EventHandler onchange;
+ *   attribute EventHandler onaddqualitylevel;
+ *   attribute EventHandler onremovequalitylevel;
+ * };
+ *
+ * @extends videojs.EventTarget
+ * @class QualityLevelList
+ */
+
+var QualityLevelList =
+/*#__PURE__*/
+function (_videojs$EventTarget) {
+  _inheritsLoose(QualityLevelList, _videojs$EventTarget);
+
+  function QualityLevelList() {
+    var _this;
+
+    _this = _videojs$EventTarget.call(this) || this;
+
+    var list = _assertThisInitialized(_assertThisInitialized(_this)); // eslint-disable-line
+
+
+    if (video_js__WEBPACK_IMPORTED_MODULE_0__.default.browser.IS_IE8) {
+      list = global_document__WEBPACK_IMPORTED_MODULE_1___default().createElement('custom');
+
+      for (var prop in QualityLevelList.prototype) {
+        if (prop !== 'constructor') {
+          list[prop] = QualityLevelList.prototype[prop];
+        }
+      }
+    }
+
+    list.levels_ = [];
+    list.selectedIndex_ = -1;
+    /**
+     * Get the index of the currently selected QualityLevel.
+     *
+     * @returns {number} The index of the selected QualityLevel. -1 if none selected.
+     * @readonly
+     */
+
+    Object.defineProperty(list, 'selectedIndex', {
+      get: function get() {
+        return list.selectedIndex_;
+      }
+    });
+    /**
+     * Get the length of the list of QualityLevels.
+     *
+     * @returns {number} The length of the list.
+     * @readonly
+     */
+
+    Object.defineProperty(list, 'length', {
+      get: function get() {
+        return list.levels_.length;
+      }
+    });
+    return list || _assertThisInitialized(_this);
+  }
+  /**
+   * Adds a quality level to the list.
+   *
+   * @param {Representation|Object} representation The representation of the quality level
+   * @param {string}   representation.id        Unique id of the QualityLevel
+   * @param {number=}  representation.width     Resolution width of the QualityLevel
+   * @param {number=}  representation.height    Resolution height of the QualityLevel
+   * @param {number}   representation.bandwidth Bitrate of the QualityLevel
+   * @param {Function} representation.enabled   Callback to enable/disable QualityLevel
+   * @return {QualityLevel} the QualityLevel added to the list
+   * @method addQualityLevel
+   */
+
+
+  var _proto = QualityLevelList.prototype;
+
+  _proto.addQualityLevel = function addQualityLevel(representation) {
+    var qualityLevel = this.getQualityLevelById(representation.id); // Do not add duplicate quality levels
+
+    if (qualityLevel) {
+      return qualityLevel;
+    }
+
+    var index = this.levels_.length;
+    qualityLevel = new QualityLevel(representation);
+
+    if (!('' + index in this)) {
+      Object.defineProperty(this, index, {
+        get: function get() {
+          return this.levels_[index];
+        }
+      });
+    }
+
+    this.levels_.push(qualityLevel);
+    this.trigger({
+      qualityLevel: qualityLevel,
+      type: 'addqualitylevel'
+    });
+    return qualityLevel;
+  };
+  /**
+   * Removes a quality level from the list.
+   *
+   * @param {QualityLevel} remove QualityLevel to remove to the list.
+   * @return {QualityLevel|null} the QualityLevel removed or null if nothing removed
+   * @method removeQualityLevel
+   */
+
+
+  _proto.removeQualityLevel = function removeQualityLevel(qualityLevel) {
+    var removed = null;
+
+    for (var i = 0, l = this.length; i < l; i++) {
+      if (this[i] === qualityLevel) {
+        removed = this.levels_.splice(i, 1)[0];
+
+        if (this.selectedIndex_ === i) {
+          this.selectedIndex_ = -1;
+        } else if (this.selectedIndex_ > i) {
+          this.selectedIndex_--;
+        }
+
+        break;
+      }
+    }
+
+    if (removed) {
+      this.trigger({
+        qualityLevel: qualityLevel,
+        type: 'removequalitylevel'
+      });
+    }
+
+    return removed;
+  };
+  /**
+   * Searches for a QualityLevel with the given id.
+   *
+   * @param {string} id The id of the QualityLevel to find.
+   * @return {QualityLevel|null} The QualityLevel with id, or null if not found.
+   * @method getQualityLevelById
+   */
+
+
+  _proto.getQualityLevelById = function getQualityLevelById(id) {
+    for (var i = 0, l = this.length; i < l; i++) {
+      var level = this[i];
+
+      if (level.id === id) {
+        return level;
+      }
+    }
+
+    return null;
+  };
+  /**
+   * Resets the list of QualityLevels to empty
+   *
+   * @method dispose
+   */
+
+
+  _proto.dispose = function dispose() {
+    this.selectedIndex_ = -1;
+    this.levels_.length = 0;
+  };
+
+  return QualityLevelList;
+}(video_js__WEBPACK_IMPORTED_MODULE_0__.default.EventTarget);
+/**
+ * change - The selected QualityLevel has changed.
+ * addqualitylevel - A QualityLevel has been added to the QualityLevelList.
+ * removequalitylevel - A QualityLevel has been removed from the QualityLevelList.
+ */
+
+
+QualityLevelList.prototype.allowedEvents_ = {
+  change: 'change',
+  addqualitylevel: 'addqualitylevel',
+  removequalitylevel: 'removequalitylevel'
+}; // emulate attribute EventHandler support to allow for feature detection
+
+for (var event in QualityLevelList.prototype.allowedEvents_) {
+  QualityLevelList.prototype['on' + event] = null;
+}
+
+var version = "2.1.0";
+
+var registerPlugin = video_js__WEBPACK_IMPORTED_MODULE_0__.default.registerPlugin || video_js__WEBPACK_IMPORTED_MODULE_0__.default.plugin;
+/**
+ * Initialization function for the qualityLevels plugin. Sets up the QualityLevelList and
+ * event handlers.
+ *
+ * @param {Player} player Player object.
+ * @param {Object} options Plugin options object.
+ * @function initPlugin
+ */
+
+var initPlugin = function initPlugin(player, options) {
+  var originalPluginFn = player.qualityLevels;
+  var qualityLevelList = new QualityLevelList();
+
+  var disposeHandler = function disposeHandler() {
+    qualityLevelList.dispose();
+    player.qualityLevels = originalPluginFn;
+    player.off('dispose', disposeHandler);
+  };
+
+  player.on('dispose', disposeHandler);
+
+  player.qualityLevels = function () {
+    return qualityLevelList;
+  };
+
+  player.qualityLevels.VERSION = version;
+  return qualityLevelList;
+};
+/**
+ * A video.js plugin.
+ *
+ * In the plugin function, the value of `this` is a video.js `Player`
+ * instance. You cannot rely on the player being in a "ready" state here,
+ * depending on how the plugin is invoked. This may or may not be important
+ * to you; if not, remove the wait for "ready"!
+ *
+ * @param {Object} options Plugin options object
+ * @function qualityLevels
+ */
+
+
+var qualityLevels = function qualityLevels(options) {
+  return initPlugin(this, video_js__WEBPACK_IMPORTED_MODULE_0__.default.mergeOptions({}, options));
+}; // Register the plugin with video.js.
+
+
+registerPlugin('qualityLevels', qualityLevels); // Include the version number.
+
+qualityLevels.VERSION = version;
+
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (qualityLevels);
+
+
+/***/ }),
+
+/***/ "./node_modules/videojs-hls-quality-selector/dist/videojs-hls-quality-selector.es.js":
+/*!*******************************************************************************************!*\
+  !*** ./node_modules/videojs-hls-quality-selector/dist/videojs-hls-quality-selector.es.js ***!
+  \*******************************************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var video_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! video.js */ "./node_modules/video.js/dist/video.es.js");
+
+
+var version = "1.1.4";
+
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) {
+  return typeof obj;
+} : function (obj) {
+  return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
+};
+
+
+
+
+
+var asyncGenerator = function () {
+  function AwaitValue(value) {
+    this.value = value;
+  }
+
+  function AsyncGenerator(gen) {
+    var front, back;
+
+    function send(key, arg) {
+      return new Promise(function (resolve, reject) {
+        var request = {
+          key: key,
+          arg: arg,
+          resolve: resolve,
+          reject: reject,
+          next: null
+        };
+
+        if (back) {
+          back = back.next = request;
+        } else {
+          front = back = request;
+          resume(key, arg);
+        }
+      });
+    }
+
+    function resume(key, arg) {
+      try {
+        var result = gen[key](arg);
+        var value = result.value;
+
+        if (value instanceof AwaitValue) {
+          Promise.resolve(value.value).then(function (arg) {
+            resume("next", arg);
+          }, function (arg) {
+            resume("throw", arg);
+          });
+        } else {
+          settle(result.done ? "return" : "normal", result.value);
+        }
+      } catch (err) {
+        settle("throw", err);
+      }
+    }
+
+    function settle(type, value) {
+      switch (type) {
+        case "return":
+          front.resolve({
+            value: value,
+            done: true
+          });
+          break;
+
+        case "throw":
+          front.reject(value);
+          break;
+
+        default:
+          front.resolve({
+            value: value,
+            done: false
+          });
+          break;
+      }
+
+      front = front.next;
+
+      if (front) {
+        resume(front.key, front.arg);
+      } else {
+        back = null;
+      }
+    }
+
+    this._invoke = send;
+
+    if (typeof gen.return !== "function") {
+      this.return = undefined;
+    }
+  }
+
+  if (typeof Symbol === "function" && Symbol.asyncIterator) {
+    AsyncGenerator.prototype[Symbol.asyncIterator] = function () {
+      return this;
+    };
+  }
+
+  AsyncGenerator.prototype.next = function (arg) {
+    return this._invoke("next", arg);
+  };
+
+  AsyncGenerator.prototype.throw = function (arg) {
+    return this._invoke("throw", arg);
+  };
+
+  AsyncGenerator.prototype.return = function (arg) {
+    return this._invoke("return", arg);
+  };
+
+  return {
+    wrap: function (fn) {
+      return function () {
+        return new AsyncGenerator(fn.apply(this, arguments));
+      };
+    },
+    await: function (value) {
+      return new AwaitValue(value);
+    }
+  };
+}();
+
+
+
+
+
+var classCallCheck = function (instance, Constructor) {
+  if (!(instance instanceof Constructor)) {
+    throw new TypeError("Cannot call a class as a function");
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+var inherits = function (subClass, superClass) {
+  if (typeof superClass !== "function" && superClass !== null) {
+    throw new TypeError("Super expression must either be null or a function, not " + typeof superClass);
+  }
+
+  subClass.prototype = Object.create(superClass && superClass.prototype, {
+    constructor: {
+      value: subClass,
+      enumerable: false,
+      writable: true,
+      configurable: true
+    }
+  });
+  if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass;
+};
+
+
+
+
+
+
+
+
+
+
+
+var possibleConstructorReturn = function (self, call) {
+  if (!self) {
+    throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+  }
+
+  return call && (typeof call === "object" || typeof call === "function") ? call : self;
+};
+
+var VideoJsButtonClass = video_js__WEBPACK_IMPORTED_MODULE_0__.default.getComponent('MenuButton');
+var VideoJsMenuClass = video_js__WEBPACK_IMPORTED_MODULE_0__.default.getComponent('Menu');
+var VideoJsComponent = video_js__WEBPACK_IMPORTED_MODULE_0__.default.getComponent('Component');
+var Dom = video_js__WEBPACK_IMPORTED_MODULE_0__.default.dom;
+
+/**
+ * Convert string to title case.
+ *
+ * @param {string} string - the string to convert
+ * @return {string} the returned titlecase string
+ */
+function toTitleCase(string) {
+  if (typeof string !== 'string') {
+    return string;
+  }
+
+  return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
+/**
+ * Extend vjs button class for quality button.
+ */
+
+var ConcreteButton = function (_VideoJsButtonClass) {
+  inherits(ConcreteButton, _VideoJsButtonClass);
+
+  /**
+   * Button constructor.
+   *
+   * @param {Player} player - videojs player instance
+   */
+  function ConcreteButton(player) {
+    classCallCheck(this, ConcreteButton);
+    return possibleConstructorReturn(this, _VideoJsButtonClass.call(this, player, {
+      title: player.localize('Quality'),
+      name: 'QualityButton'
+    }));
+  }
+
+  /**
+   * Creates button items.
+   *
+   * @return {Array} - Button items
+   */
+
+
+  ConcreteButton.prototype.createItems = function createItems() {
+    return [];
+  };
+
+  /**
+   * Create the menu and add all items to it.
+   *
+   * @return {Menu}
+   *         The constructed menu
+   */
+
+
+  ConcreteButton.prototype.createMenu = function createMenu() {
+    var menu = new VideoJsMenuClass(this.player_, { menuButton: this });
+
+    this.hideThreshold_ = 0;
+
+    // Add a title list item to the top
+    if (this.options_.title) {
+      var titleEl = Dom.createEl('li', {
+        className: 'vjs-menu-title',
+        innerHTML: toTitleCase(this.options_.title),
+        tabIndex: -1
+      });
+      var titleComponent = new VideoJsComponent(this.player_, { el: titleEl });
+
+      this.hideThreshold_ += 1;
+
+      menu.addItem(titleComponent);
+    }
+
+    this.items = this.createItems();
+
+    if (this.items) {
+      // Add menu items to the menu
+      for (var i = 0; i < this.items.length; i++) {
+        menu.addItem(this.items[i]);
+      }
+    }
+
+    return menu;
+  };
+
+  return ConcreteButton;
+}(VideoJsButtonClass);
+
+// Concrete classes
+var VideoJsMenuItemClass = video_js__WEBPACK_IMPORTED_MODULE_0__.default.getComponent('MenuItem');
+
+/**
+ * Extend vjs menu item class.
+ */
+
+var ConcreteMenuItem = function (_VideoJsMenuItemClass) {
+  inherits(ConcreteMenuItem, _VideoJsMenuItemClass);
+
+  /**
+   * Menu item constructor.
+   *
+   * @param {Player} player - vjs player
+   * @param {Object} item - Item object
+   * @param {ConcreteButton} qualityButton - The containing button.
+   * @param {HlsQualitySelectorPlugin} plugin - This plugin instance.
+   */
+  function ConcreteMenuItem(player, item, qualityButton, plugin) {
+    classCallCheck(this, ConcreteMenuItem);
+
+    var _this = possibleConstructorReturn(this, _VideoJsMenuItemClass.call(this, player, {
+      label: item.label,
+      selectable: true,
+      selected: item.selected || false
+    }));
+
+    _this.item = item;
+    _this.qualityButton = qualityButton;
+    _this.plugin = plugin;
+    return _this;
+  }
+
+  /**
+   * Click event for menu item.
+   */
+
+
+  ConcreteMenuItem.prototype.handleClick = function handleClick() {
+
+    // Reset other menu items selected status.
+    for (var i = 0; i < this.qualityButton.items.length; ++i) {
+      this.qualityButton.items[i].selected(false);
+    }
+
+    // Set this menu item to selected, and set quality.
+    this.plugin.setQuality(this.item.value);
+    this.selected(true);
+  };
+
+  return ConcreteMenuItem;
+}(VideoJsMenuItemClass);
+
+// Default options for the plugin.
+var defaults = {};
+
+// Cross-compatibility for Video.js 5 and 6.
+var registerPlugin = video_js__WEBPACK_IMPORTED_MODULE_0__.default.registerPlugin || video_js__WEBPACK_IMPORTED_MODULE_0__.default.plugin;
+// const dom = videojs.dom || videojs;
+
+/**
+ * VideoJS HLS Quality Selector Plugin class.
+ */
+
+var HlsQualitySelectorPlugin = function () {
+
+  /**
+   * Plugin Constructor.
+   *
+   * @param {Player} player - The videojs player instance.
+   * @param {Object} options - The plugin options.
+   */
+  function HlsQualitySelectorPlugin(player, options) {
+    classCallCheck(this, HlsQualitySelectorPlugin);
+
+    this.player = player;
+    this.config = options;
+
+    // If there is quality levels plugin and the HLS tech exists
+    // then continue.
+    if (this.player.qualityLevels && this.getHls()) {
+      // Create the quality button.
+      this.createQualityButton();
+      this.bindPlayerEvents();
+    }
+  }
+
+  /**
+   * Returns HLS Plugin
+   *
+   * @return {*} - videojs-hls-contrib plugin.
+   */
+
+
+  HlsQualitySelectorPlugin.prototype.getHls = function getHls() {
+    return this.player.tech({ IWillNotUseThisInPlugins: true }).hls;
+  };
+
+  /**
+   * Binds listener for quality level changes.
+   */
+
+
+  HlsQualitySelectorPlugin.prototype.bindPlayerEvents = function bindPlayerEvents() {
+    this.player.qualityLevels().on('addqualitylevel', this.onAddQualityLevel.bind(this));
+  };
+
+  /**
+   * Adds the quality menu button to the player control bar.
+   */
+
+
+  HlsQualitySelectorPlugin.prototype.createQualityButton = function createQualityButton() {
+
+    var player = this.player;
+
+    this._qualityButton = new ConcreteButton(player);
+
+    var placementIndex = player.controlBar.children().length - 2;
+    var concreteButtonInstance = player.controlBar.addChild(this._qualityButton, { componentClass: 'qualitySelector' }, this.config.placementIndex || placementIndex);
+
+    concreteButtonInstance.addClass('vjs-quality-selector');
+    if (!this.config.displayCurrentQuality) {
+      var icon = ' ' + (this.config.vjsIconClass || 'vjs-icon-hd');
+
+      concreteButtonInstance.menuButton_.$('.vjs-icon-placeholder').className += icon;
+    } else {
+      this.setButtonInnerText('auto');
+    }
+    concreteButtonInstance.removeClass('vjs-hidden');
+  };
+
+  /**
+   *Set inner button text.
+   *
+   * @param {string} text - the text to display in the button.
+   */
+
+
+  HlsQualitySelectorPlugin.prototype.setButtonInnerText = function setButtonInnerText(text) {
+    this._qualityButton.menuButton_.$('.vjs-icon-placeholder').innerHTML = text;
+  };
+
+  /**
+   * Builds individual quality menu items.
+   *
+   * @param {Object} item - Individual quality menu item.
+   * @return {ConcreteMenuItem} - Menu item
+   */
+
+
+  HlsQualitySelectorPlugin.prototype.getQualityMenuItem = function getQualityMenuItem(item) {
+    var player = this.player;
+
+    return new ConcreteMenuItem(player, item, this._qualityButton, this);
+  };
+
+  /**
+   * Executed when a quality level is added from HLS playlist.
+   */
+
+
+  HlsQualitySelectorPlugin.prototype.onAddQualityLevel = function onAddQualityLevel() {
+    var _this = this;
+
+    var player = this.player;
+    var qualityList = player.qualityLevels();
+    var levels = qualityList.levels_ || [];
+    var levelItems = [];
+
+    var _loop = function _loop(i) {
+      if (!levelItems.filter(function (_existingItem) {
+        return _existingItem.item && _existingItem.item.value === levels[i].height;
+      }).length) {
+        var levelItem = _this.getQualityMenuItem.call(_this, {
+          label: levels[i].height + 'p',
+          value: levels[i].height
+        });
+
+        levelItems.push(levelItem);
+      }
+    };
+
+    for (var i = 0; i < levels.length; ++i) {
+      _loop(i);
+    }
+
+    levelItems.sort(function (current, next) {
+      if ((typeof current === 'undefined' ? 'undefined' : _typeof(current)) !== 'object' || (typeof next === 'undefined' ? 'undefined' : _typeof(next)) !== 'object') {
+        return -1;
+      }
+      if (current.item.value < next.item.value) {
+        return -1;
+      }
+      if (current.item.value > next.item.value) {
+        return 1;
+      }
+      return 0;
+    });
+
+    levelItems.push(this.getQualityMenuItem.call(this, {
+      label: player.localize('Auto'),
+      value: 'auto',
+      selected: true
+    }));
+
+    if (this._qualityButton) {
+      this._qualityButton.createItems = function () {
+        return levelItems;
+      };
+      this._qualityButton.update();
+    }
+  };
+
+  /**
+   * Sets quality (based on media height)
+   *
+   * @param {number} height - A number representing HLS playlist.
+   */
+
+
+  HlsQualitySelectorPlugin.prototype.setQuality = function setQuality(height) {
+    var qualityList = this.player.qualityLevels();
+
+    // Set quality on plugin
+    this._currentQuality = height;
+
+    if (this.config.displayCurrentQuality) {
+      this.setButtonInnerText(height === 'auto' ? height : height + 'p');
+    }
+
+    for (var i = 0; i < qualityList.length; ++i) {
+      var quality = qualityList[i];
+
+      quality.enabled = quality.height === height || height === 'auto';
+    }
+    this._qualityButton.unpressButton();
+  };
+
+  /**
+   * Return the current set quality or 'auto'
+   *
+   * @return {string} the currently set quality
+   */
+
+
+  HlsQualitySelectorPlugin.prototype.getCurrentQuality = function getCurrentQuality() {
+    return this._currentQuality || 'auto';
+  };
+
+  return HlsQualitySelectorPlugin;
+}();
+
+/**
+ * Function to invoke when the player is ready.
+ *
+ * This is a great place for your plugin to initialize itself. When this
+ * function is called, the player will have its DOM and child components
+ * in place.
+ *
+ * @function onPlayerReady
+ * @param    {Player} player
+ *           A Video.js player object.
+ *
+ * @param    {Object} [options={}]
+ *           A plain object containing options for the plugin.
+ */
+
+
+var onPlayerReady = function onPlayerReady(player, options) {
+  player.addClass('vjs-hls-quality-selector');
+  player.hlsQualitySelector = new HlsQualitySelectorPlugin(player, options);
+};
+
+/**
+ * A video.js plugin.
+ *
+ * In the plugin function, the value of `this` is a video.js `Player`
+ * instance. You cannot rely on the player being in a "ready" state here,
+ * depending on how the plugin is invoked. This may or may not be important
+ * to you; if not, remove the wait for "ready"!
+ *
+ * @function hlsQualitySelector
+ * @param    {Object} [options={}]
+ *           An object of options left to the plugin author to define.
+ */
+var hlsQualitySelector = function hlsQualitySelector(options) {
+  var _this2 = this;
+
+  this.ready(function () {
+    onPlayerReady(_this2, video_js__WEBPACK_IMPORTED_MODULE_0__.default.mergeOptions(defaults, options));
+  });
+};
+
+// Register the plugin with video.js.
+registerPlugin('hlsQualitySelector', hlsQualitySelector);
+
+// Include the version number.
+hlsQualitySelector.VERSION = version;
+
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (hlsQualitySelector);
+
+
+/***/ }),
+
+/***/ "./node_modules/videojs-hotkeys/videojs.hotkeys.js":
+/*!*********************************************************!*\
+  !*** ./node_modules/videojs-hotkeys/videojs.hotkeys.js ***!
+  \*********************************************************/
+/***/ (function(module, exports, __webpack_require__) {
+
+var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*
+ * Video.js Hotkeys
+ * https://github.com/ctd1500/videojs-hotkeys
+ *
+ * Copyright (c) 2015 Chris Dougherty
+ * Licensed under the Apache-2.0 license.
+ */
+
+;(function(root, factory) {
+  if (typeof window !== 'undefined' && window.videojs) {
+    factory(window.videojs);
+  } else if (true) {
+    !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(/*! video.js */ "./node_modules/video.js/dist/video.es.js")], __WEBPACK_AMD_DEFINE_RESULT__ = (function (module) {
+      return factory(module.default || module);
+    }).apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__),
+		__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+  } else {}
+}(this, function (videojs) {
+  "use strict";
+  if (typeof window !== 'undefined') {
+    window['videojs_hotkeys'] = { version: "0.2.27" };
+  }
+
+  var hotkeys = function(options) {
+    var player = this;
+    var pEl = player.el();
+    var doc = document;
+    var def_options = {
+      volumeStep: 0.1,
+      seekStep: 5,
+      enableMute: true,
+      enableVolumeScroll: true,
+      enableHoverScroll: false,
+      enableFullscreen: true,
+      enableNumbers: true,
+      enableJogStyle: false,
+      alwaysCaptureHotkeys: false,
+      captureDocumentHotkeys: false,
+      documentHotkeysFocusElementFilter: function () { return false },
+      enableModifiersForNumbers: true,
+      enableInactiveFocus: true,
+      skipInitialFocus: false,
+      playPauseKey: playPauseKey,
+      rewindKey: rewindKey,
+      forwardKey: forwardKey,
+      volumeUpKey: volumeUpKey,
+      volumeDownKey: volumeDownKey,
+      muteKey: muteKey,
+      fullscreenKey: fullscreenKey,
+      customKeys: {}
+    };
+
+    var cPlay = 1,
+      cRewind = 2,
+      cForward = 3,
+      cVolumeUp = 4,
+      cVolumeDown = 5,
+      cMute = 6,
+      cFullscreen = 7;
+
+    // Use built-in merge function from Video.js v5.0+ or v4.4.0+
+    var mergeOptions = videojs.mergeOptions || videojs.util.mergeOptions;
+    options = mergeOptions(def_options, options || {});
+
+    var volumeStep = options.volumeStep,
+      seekStep = options.seekStep,
+      enableMute = options.enableMute,
+      enableVolumeScroll = options.enableVolumeScroll,
+      enableHoverScroll = options.enableHoverScroll,
+      enableFull = options.enableFullscreen,
+      enableNumbers = options.enableNumbers,
+      enableJogStyle = options.enableJogStyle,
+      alwaysCaptureHotkeys = options.alwaysCaptureHotkeys,
+      captureDocumentHotkeys = options.captureDocumentHotkeys,
+      documentHotkeysFocusElementFilter = options.documentHotkeysFocusElementFilter,
+      enableModifiersForNumbers = options.enableModifiersForNumbers,
+      enableInactiveFocus = options.enableInactiveFocus,
+      skipInitialFocus = options.skipInitialFocus;
+
+    var videojsVer = videojs.VERSION;
+
+    // Set default player tabindex to handle keydown and doubleclick events
+    if (!pEl.hasAttribute('tabIndex')) {
+      pEl.setAttribute('tabIndex', '-1');
+    }
+
+    // Remove player outline to fix video performance issue
+    pEl.style.outline = "none";
+
+    if (alwaysCaptureHotkeys || !player.autoplay()) {
+      if (!skipInitialFocus) {
+        player.one('play', function() {
+          pEl.focus(); // Fixes the .vjs-big-play-button handing focus back to body instead of the player
+        });
+      }
+    }
+
+    if (enableInactiveFocus) {
+      player.on('userinactive', function() {
+        // When the control bar fades, re-apply focus to the player if last focus was a control button
+        var cancelFocusingPlayer = function() {
+          clearTimeout(focusingPlayerTimeout);
+        };
+        var focusingPlayerTimeout = setTimeout(function() {
+          player.off('useractive', cancelFocusingPlayer);
+          var activeElement = doc.activeElement;
+          var controlBar = pEl.querySelector('.vjs-control-bar');
+          if (activeElement && activeElement.parentElement == controlBar) {
+            pEl.focus();
+          }
+        }, 10);
+
+        player.one('useractive', cancelFocusingPlayer);
+      });
+    }
+
+    player.on('play', function() {
+      // Fix allowing the YouTube plugin to have hotkey support.
+      var ifblocker = pEl.querySelector('.iframeblocker');
+      if (ifblocker && ifblocker.style.display === '') {
+        ifblocker.style.display = "block";
+        ifblocker.style.bottom = "39px";
+      }
+    });
+
+    var keyDown = function keyDown(event) {
+      var ewhich = event.which, wasPlaying, seekTime;
+      var ePreventDefault = event.preventDefault.bind(event);
+      var duration = player.duration();
+      // When controls are disabled, hotkeys will be disabled as well
+      if (player.controls()) {
+
+        // Don't catch keys if any control buttons are focused, unless alwaysCaptureHotkeys is true
+        var activeEl = doc.activeElement;
+        if (
+          alwaysCaptureHotkeys ||
+          (captureDocumentHotkeys && documentHotkeysFocusElementFilter(activeEl)) ||
+
+          activeEl == pEl ||
+          activeEl == pEl.querySelector('.vjs-tech') ||
+          activeEl == pEl.querySelector('.vjs-control-bar') ||
+          activeEl == pEl.querySelector('.iframeblocker')
+        ) {
+
+          switch (checkKeys(event, player)) {
+            // Spacebar toggles play/pause
+            case cPlay:
+              ePreventDefault();
+              if (alwaysCaptureHotkeys || captureDocumentHotkeys) {
+                // Prevent control activation with space
+                event.stopPropagation();
+              }
+
+              if (player.paused()) {
+                silencePromise(player.play());
+              } else {
+                player.pause();
+              }
+              break;
+
+            // Seeking with the left/right arrow keys
+            case cRewind: // Seek Backward
+              wasPlaying = !player.paused();
+              ePreventDefault();
+              if (wasPlaying) {
+                player.pause();
+              }
+              seekTime = player.currentTime() - seekStepD(event);
+              // The flash player tech will allow you to seek into negative
+              // numbers and break the seekbar, so try to prevent that.
+              if (seekTime <= 0) {
+                seekTime = 0;
+              }
+              player.currentTime(seekTime);
+              if (wasPlaying) {
+                silencePromise(player.play());
+              }
+              break;
+            case cForward: // Seek Forward
+              wasPlaying = !player.paused();
+              ePreventDefault();
+              if (wasPlaying) {
+                player.pause();
+              }
+              seekTime = player.currentTime() + seekStepD(event);
+              // Fixes the player not sending the end event if you
+              // try to seek past the duration on the seekbar.
+              if (seekTime >= duration) {
+                seekTime = wasPlaying ? duration - .001 : duration;
+              }
+              player.currentTime(seekTime);
+              if (wasPlaying) {
+                silencePromise(player.play());
+              }
+              break;
+
+            // Volume control with the up/down arrow keys
+            case cVolumeDown:
+              ePreventDefault();
+              if (!enableJogStyle) {
+                player.volume(player.volume() - volumeStep);
+              } else {
+                seekTime = player.currentTime() - 1;
+                if (player.currentTime() <= 1) {
+                  seekTime = 0;
+                }
+                player.currentTime(seekTime);
+              }
+              break;
+            case cVolumeUp:
+              ePreventDefault();
+              if (!enableJogStyle) {
+                player.volume(player.volume() + volumeStep);
+              } else {
+                seekTime = player.currentTime() + 1;
+                if (seekTime >= duration) {
+                  seekTime = duration;
+                }
+                player.currentTime(seekTime);
+              }
+              break;
+
+            // Toggle Mute with the M key
+            case cMute:
+              if (enableMute) {
+                player.muted(!player.muted());
+              }
+              break;
+
+            // Toggle Fullscreen with the F key
+            case  cFullscreen:
+              if (enableFull) {
+                if (player.isFullscreen()) {
+                  player.exitFullscreen();
+                } else {
+                  player.requestFullscreen();
+                }
+              }
+              break;
+
+            default:
+              // Number keys from 0-9 skip to a percentage of the video. 0 is 0% and 9 is 90%
+              if ((ewhich > 47 && ewhich < 59) || (ewhich > 95 && ewhich < 106)) {
+                // Do not handle if enableModifiersForNumbers set to false and keys are Ctrl, Cmd or Alt
+                if (enableModifiersForNumbers || !(event.metaKey || event.ctrlKey || event.altKey)) {
+                  if (enableNumbers) {
+                    var sub = 48;
+                    if (ewhich > 95) {
+                      sub = 96;
+                    }
+                    var number = ewhich - sub;
+                    ePreventDefault();
+                    player.currentTime(player.duration() * number * 0.1);
+                  }
+                }
+              }
+
+              // Handle any custom hotkeys
+              for (var customKey in options.customKeys) {
+                var customHotkey = options.customKeys[customKey];
+                // Check for well formed custom keys
+                if (customHotkey && customHotkey.key && customHotkey.handler) {
+                  // Check if the custom key's condition matches
+                  if (customHotkey.key(event)) {
+                    ePreventDefault();
+                    customHotkey.handler(player, options, event);
+                  }
+                }
+              }
+          }
+        }
+      }
+    };
+
+    var doubleClick = function doubleClick(event) {
+      // Video.js added double-click fullscreen in 7.1.0
+      if (videojsVer != null && videojsVer <= "7.1.0") {
+        // When controls are disabled, hotkeys will be disabled as well
+        if (player.controls()) {
+
+          // Don't catch clicks if any control buttons are focused
+          var activeEl = event.relatedTarget || event.toElement || doc.activeElement;
+          if (activeEl == pEl ||
+              activeEl == pEl.querySelector('.vjs-tech') ||
+              activeEl == pEl.querySelector('.iframeblocker')) {
+
+            if (enableFull) {
+              if (player.isFullscreen()) {
+                player.exitFullscreen();
+              } else {
+                player.requestFullscreen();
+              }
+            }
+          }
+        }
+      }
+    };
+
+    var volumeHover = false;
+    var volumeSelector = pEl.querySelector('.vjs-volume-menu-button') || pEl.querySelector('.vjs-volume-panel');
+    if (volumeSelector != null) {
+      volumeSelector.onmouseover = function() { volumeHover = true; };
+      volumeSelector.onmouseout = function() { volumeHover = false; };
+    }
+
+    var mouseScroll = function mouseScroll(event) {
+      if (enableHoverScroll) {
+        // If we leave this undefined then it can match non-existent elements below
+        var activeEl = 0;
+      } else {
+        var activeEl = doc.activeElement;
+      }
+
+      // When controls are disabled, hotkeys will be disabled as well
+      if (player.controls()) {
+        if (alwaysCaptureHotkeys ||
+            activeEl == pEl ||
+            activeEl == pEl.querySelector('.vjs-tech') ||
+            activeEl == pEl.querySelector('.iframeblocker') ||
+            activeEl == pEl.querySelector('.vjs-control-bar') ||
+            volumeHover) {
+
+          if (enableVolumeScroll) {
+            event = window.event || event;
+            var delta = Math.max(-1, Math.min(1, (event.wheelDelta || -event.detail)));
+            event.preventDefault();
+
+            if (delta == 1) {
+              player.volume(player.volume() + volumeStep);
+            } else if (delta == -1) {
+              player.volume(player.volume() - volumeStep);
+            }
+          }
+        }
+      }
+    };
+
+    var checkKeys = function checkKeys(e, player) {
+      // Allow some modularity in defining custom hotkeys
+
+      // Play/Pause check
+      if (options.playPauseKey(e, player)) {
+        return cPlay;
+      }
+
+      // Seek Backward check
+      if (options.rewindKey(e, player)) {
+        return cRewind;
+      }
+
+      // Seek Forward check
+      if (options.forwardKey(e, player)) {
+        return cForward;
+      }
+
+      // Volume Up check
+      if (options.volumeUpKey(e, player)) {
+        return cVolumeUp;
+      }
+
+      // Volume Down check
+      if (options.volumeDownKey(e, player)) {
+        return cVolumeDown;
+      }
+
+      // Mute check
+      if (options.muteKey(e, player)) {
+        return cMute;
+      }
+
+      // Fullscreen check
+      if (options.fullscreenKey(e, player)) {
+        return cFullscreen;
+      }
+    };
+
+    function playPauseKey(e) {
+      // Space bar or MediaPlayPause
+      return (e.which === 32 || e.which === 179);
+    }
+
+    function rewindKey(e) {
+      // Left Arrow or MediaRewind
+      return (e.which === 37 || e.which === 177);
+    }
+
+    function forwardKey(e) {
+      // Right Arrow or MediaForward
+      return (e.which === 39 || e.which === 176);
+    }
+
+    function volumeUpKey(e) {
+      // Up Arrow
+      return (e.which === 38);
+    }
+
+    function volumeDownKey(e) {
+      // Down Arrow
+      return (e.which === 40);
+    }
+
+    function muteKey(e) {
+      // M key
+      return (e.which === 77);
+    }
+
+    function fullscreenKey(e) {
+      // F key
+      return (e.which === 70);
+    }
+
+    function seekStepD(e) {
+      // SeekStep caller, returns an int, or a function returning an int
+      return (typeof seekStep === "function" ? seekStep(e) : seekStep);
+    }
+
+    function silencePromise(value) {
+      if (value != null && typeof value.then === 'function') {
+        value.then(null, function(e) {});
+      }
+    }
+
+    player.on('keydown', keyDown);
+    player.on('dblclick', doubleClick);
+    player.on('mousewheel', mouseScroll);
+    player.on("DOMMouseScroll", mouseScroll);
+
+    if (captureDocumentHotkeys) {
+      document.addEventListener('keydown', function (event) { keyDown(event) });
+    }
+
+    return this;
+  };
+
+  var registerPlugin = videojs.registerPlugin || videojs.plugin;
+  registerPlugin('hotkeys', hotkeys);
+}));
+
+
+/***/ }),
+
+/***/ "./node_modules/videojs-theater-mode/dist/videojs.theaterMode.js":
+/*!***********************************************************************!*\
+  !*** ./node_modules/videojs-theater-mode/dist/videojs.theaterMode.js ***!
+  \***********************************************************************/
+/***/ ((__unused_webpack_module, __unused_webpack_exports, __webpack_require__) => {
+
+(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=undefined;if(!u&&a)return require(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=undefined;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+module.exports={
+  "name": "videojs-theater-mode",
+  "version": "0.1.0",
+  "description": "Adds a class the video.js container that can be used to put your video into \"theater mode\"",
+  "main": "dist/videojs-theater-mode.cjs.js",
+  "module": "dist/videojs-theater-mode.es.js",
+  "generator-videojs-plugin": {
+    "version": "5.0.0"
+  },
+  "scripts": {
+    "build": "npm run clean; npm run sass; npm run build-dist; cp -r fonts dist/",
+    "sass": "mkdir -p dist/ && ./node_modules/.bin/node-sass --output-style compact ./src/videojs.theaterMode.scss dist/videojs.theaterMode.css",
+    "build-dist": "mkdir -p dist/ && ./node_modules/.bin/browserify ./src/videojs.theaterMode.js -o dist/videojs.theaterMode.js",
+    "clean": "rm -rf dist/"
+  },
+  "keywords": [
+    "videojs",
+    "videojs-plugin",
+    "theater mode"
+  ],
+  "author": "Jon <jon@jgubman.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jgubman/videojs-theater-mode"
+  },
+  "vjsstandard": {
+    "ignore": [
+      "dist",
+      "docs",
+      "test/dist",
+      "test/karma.conf.js"
+    ]
+  },
+  "files": [
+    "CONTRIBUTING.md",
+    "dist/",
+    "docs/",
+    "fonts/",
+    "index.html",
+    "scripts/",
+    "src/",
+    "test/"
+  ],
+  "dependencies": {
+    "global": "^4.3.2",
+    "video.js": "^5.2.1"
+  },
+  "devDependencies": {
+    "babelify": "^6.3.0",
+    "browserify": "^11.1.0",
+    "browserify-shim": "^3.8.10",
+    "node-sass": "^3.4.2"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "browserify-shim"
+    ]
+  },
+  "browserify-shim": {
+    "video.js": "global:videojs"
+  }
+}
+
+},{}],2:[function(require,module,exports){
+(function (global){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+  value: true
+});
+
+var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var _videoJs = (typeof window !== "undefined" ? window['videojs'] : typeof global !== "undefined" ? global['videojs'] : null);
+
+var _videoJs2 = _interopRequireDefault(_videoJs);
+
+var _packageJson = require('../package.json');
+
+var Button = _videoJs2['default'].getComponent('Button');
+var defaults = { className: 'theater-mode' };
+
+// Cross-compatibility for Video.js 5 and 6.
+var registerPlugin = _videoJs2['default'].registerPlugin || _videoJs2['default'].plugin;
+
+/**
+ * Button to add a class to passed in element that will toggle "theater mode" as defined
+ * in app's CSS (larger player, dimmed background, etc...)
+ */
+
+var TheaterModeToggle = (function (_Button) {
+  _inherits(TheaterModeToggle, _Button);
+
+  function TheaterModeToggle(player, options) {
+    _classCallCheck(this, TheaterModeToggle);
+
+    _get(Object.getPrototypeOf(TheaterModeToggle.prototype), 'constructor', this).call(this, player, options);
+    this.controlText('Toggle theater mode');
+  }
+
+  _createClass(TheaterModeToggle, [{
+    key: 'buildCSSClass',
+    value: function buildCSSClass() {
+      if (document.getElementById(this.options_.elementToToggle).classList.contains(this.options_.className)) {
+        return 'vjs-theater-mode-control-close ' + _get(Object.getPrototypeOf(TheaterModeToggle.prototype), 'buildCSSClass', this).call(this);
+      } else {
+        return 'vjs-theater-mode-control-open ' + _get(Object.getPrototypeOf(TheaterModeToggle.prototype), 'buildCSSClass', this).call(this);
+      }
+    }
+  }, {
+    key: 'handleClick',
+    value: function handleClick() {
+      var theaterModeIsOn = document.getElementById(this.options_.elementToToggle).classList.toggle(this.options_.className);
+      this.player().trigger('theaterMode', { 'theaterModeIsOn': theaterModeIsOn });
+
+      if (theaterModeIsOn) {
+        this.el_.classList.remove('vjs-theater-mode-control-open');
+        this.el_.classList.add('vjs-theater-mode-control-close');
+      } else {
+        this.el_.classList.remove('vjs-theater-mode-control-close');
+        this.el_.classList.add('vjs-theater-mode-control-open');
+      }
+    }
+  }]);
+
+  return TheaterModeToggle;
+})(Button);
+
+_videoJs2['default'].registerComponent('TheaterModeToggle', TheaterModeToggle);
+
+var onPlayerReady = function onPlayerReady(player, options) {
+  player.addClass('vjs-theater-mode');
+
+  var toggle = player.controlBar.addChild('theaterModeToggle', options);
+  player.controlBar.el().insertBefore(toggle.el(), player.controlBar.fullscreenToggle.el());
+};
+
+/**
+ * @function theaterMode
+ * @param    {Object} [options={}]
+ *           elementToToggle, the name of the DOM element to add/remove the 'theater-mode' CSS class
+ */
+var theaterMode = function theaterMode(options) {
+  var _this = this;
+
+  this.ready(function () {
+    onPlayerReady(_this, _videoJs2['default'].mergeOptions(defaults, options));
+  });
+};
+
+// Register the plugin with video.js.
+registerPlugin('theaterMode', theaterMode);
+
+// Include the version number.
+theaterMode.VERSION = _packageJson.version;
+
+exports['default'] = theaterMode;
+module.exports = exports['default'];
+
+}).call(this,typeof __webpack_require__.g !== "undefined" ? __webpack_require__.g : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"../package.json":1}]},{},[2]);
 
 
 /***/ }),

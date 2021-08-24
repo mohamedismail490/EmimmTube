@@ -19,9 +19,9 @@
 
     @stack('styles')
 </head>
-<body>
+<body id="videoTheater">
     <div id="app">
-        <nav class="navbar navbar-expand-md navbar-dark bg-dark shadow-sm fixed-top">
+        <nav id="emimmTubeNav" class="navbar navbar-expand-md navbar-dark bg-dark shadow-sm fixed-top">
             <div class="container-fluid">
                 <a class="navbar-brand" href="{{ url('/') }}">
                     <svg width="30px" height="30px"

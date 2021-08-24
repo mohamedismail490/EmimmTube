@@ -1,5 +1,14 @@
 require('./bootstrap');
 require('./videojs');
+require('videojs-theater-mode/dist/videojs.theaterMode');
+require('videojs-theater-mode/dist/videojs.theaterMode.css');
+// require('videojs-preview-thumbnails/dist/videojs-preview-thumbnails')
+require('@hola.org/videojs-thumbnails/videojs.thumbnails')
+require('@hola.org/videojs-thumbnails/videojs.thumbnails.css')
+require('videojs-contrib-quality-levels');
+require('videojs-hls-quality-selector');
+require('videojs-hotkeys/videojs.hotkeys');
+
 
 window.Vue = require('vue').default;
 
