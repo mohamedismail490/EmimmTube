@@ -39,7 +39,7 @@
 import Avatar from 'vue-avatar';
 import numeral from 'numeral';
 export default {
-    name: "replies",
+    name: "Replies",
     props: {
         comment: {
             type: Object,
@@ -56,10 +56,14 @@ export default {
                 data: [],
                 next_page_url: `/comments/${this.comment.id}/replies`
             },
-            repliesCount: numeral(this.comment.replies_count).format('0a'),
             repliesShowedForTheFirstTime: {},
             showAllReplies: {},
             hideAllReplies: {},
+        }
+    },
+    computed: {
+        repliesCount() {
+            return numeral(this.comment.replies_count).format('0a');
         }
     },
     methods: {
@@ -93,6 +97,32 @@ export default {
                 }
             }
             this.$forceUpdate();
+        },
+        addReply(reply) {
+            this.replies = {
+                ...this.replies,
+                data: [
+                    reply,
+                    ...this.replies.data
+                ]
+            }
+            this.comment.replies_count += 1;
+            if ((this.replies.data.length > 10) && this.replies.next_page_url) {
+                this.replies.data = this.replies.data.filter(r => {
+                    return r.id !== this.replies.data[parseInt((this.replies.data.length - 1))].id
+                });
+            }
+            if (!this.repliesShowedForTheFirstTime[this.comment.id]) {
+                this.replies.data = this.replies.data.filter(r => {
+                    return r.id !== this.replies.data[0].id
+                });
+                this.fetchReplies(true);
+            }else {
+                if (this.showAllReplies[this.comment.id]) {
+                    this.showAllReplies[this.comment.id] = false;
+                    this.hideAllReplies[this.comment.id] = true;
+                }
+            }
         }
     },
     mounted() {

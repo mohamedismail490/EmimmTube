@@ -2,48 +2,20 @@
     <div class="card mt-2 mb-5 video-card" style="width: 92% !important; border: none !important; margin-left: auto !important; margin-right: auto !important;">
         <div class="row my-4">
             <div class="col-md-12">
-                <input @focus.prevent="toggleCommentInput(true)" type="text" class="form-control form-control-sm reply-input"
+                <input @focus.prevent="toggleCommentInput(true)" v-model="newComment" type="text" class="form-control form-control-sm reply-input"
                        placeholder="Add a public comment">
             </div>
             <div v-if="comment_input" class="col-md-12 mt-2">
                 <div class="float-right">
                     <button @click.prevent="toggleCommentInput(false)" class="btn btn-sm btn-outline-dark" type="button">Cancel</button>
-                    <button class="btn btn-sm btn-outline-primary" type="button">Add Comment</button>
+                    <button @click.prevent="addComment" class="btn btn-sm btn-outline-primary" type="button">Add Comment</button>
                 </div>
             </div>
         </div>
 
         <div class="card video-card" style="width: 100% !important; border: none !important; margin-left: auto !important; margin-right: auto !important;">
             <div v-if="comments.data.length > 0">
-                <div class="media my-3" v-for="comment in comments.data" :key="comment.id">
-                    <Avatar :username="comment.user && comment.user.name ? comment.user.name : 'Unknown User'" :size="30" class="mr-3" :src="comment.user && comment.user.channel ? comment.user.channel.channel_image : ''"></Avatar>
-                    <div class="media-body">
-                        <h6 class="mt-0">{{ comment.user && comment.user.name ? comment.user.name : 'Unknown User'}}</h6>
-                        <span>{{ comment.body }}</span>
-
-                        <div class="d-flex mt-3">
-                            <votes :initial_entity="comment" entity_type="comment"></votes>
-                            <button @click.prevent="toggleReplyInput(comment.id,true)" class="btn btn-sm ml-2 btn-default" style="color: #909090; font-size: medium; margin-top: -5px;">
-                                Reply
-                            </button>
-                        </div>
-
-                        <div :style="`display: ${reply_input[comment.id]}`" class="row mt-2 mb-4 ">
-                            <div class="col-md-12">
-                                <input type="text" class="form-control form-control-sm reply-input"
-                                       placeholder="Add a public reply">
-                            </div>
-                            <div class="col-md-12 mt-2">
-                                <div class="float-right">
-                                    <button @click.prevent="toggleReplyInput(comment.id,false)" class="btn btn-sm btn-outline-dark" type="button">Cancel</button>
-                                    <button class="btn btn-sm btn-outline-primary" type="button">Add Reply</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <Replies :comment="comment"></Replies>
-                    </div>
-                </div>
+                <Comment v-for="comment in comments.data" :key="comment.id" :comment="comment" :reply_input="reply_input[comment.id]" :video="video"></Comment>
             </div>
             <span v-else class="text-center mt-3">No comments added for this video yet!</span>
         </div>
@@ -52,16 +24,15 @@
             <button type="button" @click.prevent="fetchComments" v-if="comments.next_page_url" class="btn btn-outline-success">
                 load more comments
             </button>
-            <span v-else>No more comments to show...</span>
+<!--            <span v-else>No more comments to show...</span>-->
         </div>
     </div>
 </template>
 
 <script>
-import Avatar from 'vue-avatar';
-import Replies from './replies'
+import Comment from './comment';
 export default {
-    name: "comments",
+    name: "Comments",
     props: {
         video: {
             type: Object,
@@ -70,8 +41,7 @@ export default {
         }
     },
     components: {
-        Avatar,
-        Replies
+        Comment
     },
     data() {
         return {
@@ -80,6 +50,7 @@ export default {
             },
             comment_input: false,
             reply_input: {},
+            newComment: ''
         }
     },
     methods: {
@@ -101,10 +72,38 @@ export default {
         },
         toggleCommentInput(status) {
             this.comment_input = status
+            if (!status) {
+                this.newComment = '';
+            }
         },
-        toggleReplyInput(commentId,status) {
-            this.reply_input[commentId] = status ? 'block' : 'none';
-            this.$forceUpdate();
+        addComment() {
+            axios.post(`/videos/${this.video.id}/comments`, {
+                body: this.newComment
+            }).then(({ data }) => {
+                this.comments = {
+                    ...this.comments,
+                    data: [
+                        data,
+                        ...this.comments.data
+                    ]
+                }
+                this.toggleCommentInput(false);
+                this.reply_input[data.id] = 'none';
+                if ((this.comments.data.length > 10) && this.comments.next_page_url) {
+                    this.comments.data = this.comments.data.filter(c => {
+                        return c.id !== this.comments.data[parseInt((this.comments.data.length - 1))].id
+                    });
+                }
+            })
+            .catch(err => {
+                if ((typeof (err.response.status) !== "undefined") && (err.response.status === 401)) {
+                    return alert('Please Login to Comment');
+                }
+                if ((typeof (err.response.status) !== "undefined") && (err.response.status === 422) && (typeof (err.response.data.errors) !== "undefined")) {
+                    return alert(err.response.data.errors.body[0]);
+                }
+                return alert("Something wrong happened! please, try again.");
+            })
         }
     },
     mounted() {

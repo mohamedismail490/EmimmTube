@@ -40,12 +40,15 @@ Route::group(['prefix' => 'channels', 'middleware' => ['auth']], function () {
         Route::put('{video}', [VideoController::class, 'updateViews'])->withoutMiddleware('auth');
         Route::put('update/{video}', [VideoController::class, 'update'])->name('channels.videos.update');
 
-
     });
 });
-//Votes
-Route::post('votes/{entityId}/{entityType}/{type}', [VoteController::class, 'vote'])->middleware('auth');
 
 Route::get('videos/{video}/comments', [CommentController::class, 'index'])->name('video.comments');
 Route::get('comments/{comment}/replies', [CommentController::class, 'show'])->name('comment.replies');
 Route::get('videos/{video}/progressbar_thumbs', [VideoController::class, 'progressbarThumbs'])->name('video.progressbar.thumbs');
+Route::group(['middleware' => ['auth']], function () {
+    //Votes
+    Route::post('votes/{entityId}/{entityType}/{type}', [VoteController::class, 'vote']);
+
+    Route::post('videos/{video}/comments', [CommentController::class, 'store'])->name('store.video.comment');
+});

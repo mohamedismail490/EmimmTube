@@ -91,7 +91,8 @@ axios.get('/videos/' + videoId + '/progressbar_thumbs')
             thumbs.forEach(function (t, index) {
                 thumbsObject[parseInt(index + 1)] = t
             })
+            player.thumbnails(thumbsObject);
         }
     })
     .catch(function (error) {})
-player.thumbnails(thumbsObject);
+// player.thumbnails(thumbsObject);

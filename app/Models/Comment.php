@@ -20,7 +20,7 @@ class Comment extends Model
     }
 
     public function replies() {
-        return $this->hasMany(self::class, 'comment_id', 'id')->whereNotNull('comment_id');
+        return $this->hasMany(self::class, 'comment_id', 'id')->whereNotNull('comment_id')->latest('created_at');
     }
 
     public function votes() {

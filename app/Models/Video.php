@@ -20,7 +20,7 @@ class Video extends Model
     }
 
     public function comments() {
-        return $this->hasMany(Comment::class)->whereNull('comment_id');
+        return $this->hasMany(Comment::class)->whereNull('comment_id')->latest('created_at');
     }
 
     public function progressbar_thumbnails() {

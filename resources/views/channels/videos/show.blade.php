@@ -15,8 +15,6 @@
                                 <div id="videoContainer" style="width: 100%;">
                                     <video-js id="video" data-channelid="{{ $video->channel_id }}"
                                               data-videoid="{{ $video->id }}"
-                                              data-videothumb="{{asset($video->thumbnail)}}"
-                                              data-videothumbs="{{json_encode($video->progressbar_thumbnails)}}"
                                               class="video-js vjs-default-skin" controls preload="auto" width="905"
                                               height="509" @if($video->thumbnail) poster="{{asset($video->thumbnail)}} @endif">
                                         <source src='{{ asset(Storage::url("videos/{$video->id}/{$video->id}.m3u8")) }}'
