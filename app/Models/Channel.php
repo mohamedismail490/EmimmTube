@@ -2,14 +2,13 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
-use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class Channel extends Model implements HasMedia
 {
-    use HasFactory,InteractsWithMedia;
+    use InteractsWithMedia;
 
     protected $appends = ['channel_image','is_subscribed','is_owner','subscriptions_count','user_subscription'];
 
@@ -20,7 +19,7 @@ class Channel extends Model implements HasMedia
         return $this -> hasMany(Subscription::class);
     }
     public function videos() {
-        return $this -> hasMany(Video::class);
+        return $this -> hasMany(Video::class)->latest('created_at');
     }
 
     public function getIsSubscribedAttribute() {
@@ -66,9 +65,8 @@ class Channel extends Model implements HasMedia
 
     public function registerMediaConversions(Media $media = null): void
     {
-        $this -> addMediaConversion('thumb')
-//            -> height(100)
-            ->fit('stretch', 100, 100);
-//            -> width(100);
+        $this->addMediaConversion('thumb')
+            ->fit('stretch', 100, 100)
+            ->nonQueued();
     }
 }

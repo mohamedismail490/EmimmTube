@@ -19,6 +19,17 @@ class ChannelController extends Controller
         return view('channels.show', compact('channel'));
     }
 
+    public function axiosShow(Channel $channel)
+    {
+        $channel = Channel::with(['user'])->findOrFail($channel->id);
+        $channelVideos = $channel->videos();
+        if (!$channel->is_owner){
+            $channelVideos = $channelVideos->where('percentage', 100);
+        }
+
+        return $channelVideos->paginate(12);
+    }
+
     public function update(UpdateRequest $request, Channel $channel)
     {
         if ($request->hasFile('image')) {

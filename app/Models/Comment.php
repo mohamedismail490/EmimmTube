@@ -9,7 +9,7 @@ class Comment extends Model
     use HasFactory;
 
     protected $with = ['user'];
-    protected $appends = ['replies_count','is_owner','is_up_voted','is_down_voted','up_votes_count','down_votes_count','user_vote'];
+    protected $appends = ['created_since','formatted_created_at','replies_count','is_owner','is_up_voted','is_down_voted','up_votes_count','down_votes_count','user_vote'];
 
     public function user() {
         return $this->belongsTo(User::class)->withDefault();

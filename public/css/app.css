@@ -10055,7 +10055,7 @@ a:hover {
   height: 100px;
   position: relative;
   cursor: pointer;
-  border: 1px solid rgba(0, 0, 0, 0.125);
+  border: 1px solid #2d2d2d;
 }
 .channel-avatar .channel-avatar-overlay {
   display: none;
@@ -10068,6 +10068,43 @@ a:hover {
   justify-content: center;
   align-items: center;
   background-color: rgba(0, 0, 0, 0.4);
+}
+
+.channel-video-card {
+  position: relative;
+}
+
+.processing-card {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.video-card-overlay {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  width: 100%;
+  opacity: 0;
+  transition: 0.5s ease;
+  background-color: rgba(0, 0, 0, 0.75);
+}
+
+.channel-video-card:hover .video-card-overlay {
+  opacity: 1;
+}
+
+.video-overlay-text {
+  color: white;
+  font-size: 20px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
 }
 
 .video-upload {
@@ -10242,4 +10279,19 @@ body.theater-mode {
   background: #181818;
   margin: 0 auto;
   transition: all 0.3s linear;
+}
+
+table.table-dark, div.bg-dark {
+  background-color: #202020 !important;
+}
+
+.video-thumbnail {
+  padding-top: 56.25%;
+}
+
+a.video-channel {
+  text-decoration: none;
+}
+a.video-channel:hover {
+  color: #fff !important;
 }

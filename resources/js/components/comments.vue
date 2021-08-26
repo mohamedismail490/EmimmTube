@@ -24,7 +24,6 @@
             <button type="button" @click.prevent="fetchComments" v-if="comments.next_page_url" class="btn btn-outline-success">
                 load more comments
             </button>
-<!--            <span v-else>No more comments to show...</span>-->
         </div>
     </div>
 </template>

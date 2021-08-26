@@ -29,6 +29,7 @@ Auth::routes();
 Route::get('/home', [HomeController::class, 'index'])->name('home');
 
 Route::resource('channels', ChannelController::class)->only(['show','update']);
+Route::post('channels/{channel}', [ChannelController::class, 'axiosShow']);
 
 Route::group(['prefix' => 'channels', 'middleware' => ['auth']], function () {
     Route::resource('{channel}/subscriptions', SubscriptionController::class)->only(['store','destroy']);
@@ -36,10 +37,9 @@ Route::group(['prefix' => 'channels', 'middleware' => ['auth']], function () {
         Route::get('upload', [VideoController::class, 'index'])->name('channels.upload');
         Route::post('validate', [VideoController::class, 'validateVideosTypes']);
         Route::post('upload', [VideoController::class, 'store']);
-        Route::get('{video}', [VideoController::class, 'show'])->withoutMiddleware('auth');
+        Route::get('{video}', [VideoController::class, 'show'])->name('channels.videos.show')->withoutMiddleware('auth');
         Route::put('{video}', [VideoController::class, 'updateViews'])->withoutMiddleware('auth');
         Route::put('update/{video}', [VideoController::class, 'update'])->name('channels.videos.update');
-
     });
 });
 

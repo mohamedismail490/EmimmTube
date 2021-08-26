@@ -26,6 +26,10 @@ Vue.component('comments',
     require('./components/comments').default
 )
 
+Vue.component('channel-videos',
+    require('./components/channel-videos').default
+)
+
 
 require('./components/channel-uploads');
 

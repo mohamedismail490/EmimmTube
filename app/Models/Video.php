@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Str;
 
 class Video extends Model
 {
     use HasFactory;
 
-    protected $appends = ['is_owner','is_up_voted','is_down_voted','up_votes_count','down_votes_count','user_vote'];
+    protected $appends = ['created_since','formatted_created_at','short_title','is_owner','is_up_voted','is_down_voted','up_votes_count','down_votes_count','user_vote'];
     protected $with    = ['channel'];
 
     public function channel() {
@@ -27,6 +28,9 @@ class Video extends Model
         return $this->hasMany(ProgressbarThumbnail::class);
     }
 
+    public function getShortTitleAttribute() {
+        return Str::limit($this->title,73,'...');
+    }
 
     public function getIsOwnerAttribute() {
         return auth()->check() ? ($this->channel->user_id === auth()->user()->id) : false;

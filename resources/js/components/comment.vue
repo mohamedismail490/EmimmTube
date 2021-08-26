@@ -2,7 +2,7 @@
     <div class="media my-3">
         <Avatar :username="comment.user && comment.user.name ? comment.user.name : 'Unknown User'" :size="30" class="mr-3" :src="comment.user && comment.user.channel ? comment.user.channel.channel_image : ''"></Avatar>
         <div class="media-body">
-            <h6 class="mt-0">{{ comment.user && comment.user.name ? comment.user.name : 'Unknown User'}}</h6>
+            <h6 class="mt-0">{{ comment.user && comment.user.name ? comment.user.name : 'Unknown User'}}&nbsp;&nbsp;<span class="small release-info">{{ comment.created_since }}</span></h6>
             <span class="pr-5">{{ comment.body }}</span>
 
             <div class="d-flex mt-3">

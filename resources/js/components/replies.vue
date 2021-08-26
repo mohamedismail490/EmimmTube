@@ -16,7 +16,7 @@
             <div class="media my-3" v-for="reply in replies.data" :key="reply.id">
                 <Avatar :username="reply.user && reply.user.name ? reply.user.name : 'Unknown User'" :size="30" class="mr-3" :src="reply.user && reply.user.channel ? reply.user.channel.channel_image : ''"></Avatar>
                 <div class="media-body">
-                    <h6 class="mt-0">{{ reply.user && reply.user.name ? reply.user.name : 'Unknown User'}}</h6>
+                    <h6 class="mt-0">{{ reply.user && reply.user.name ? reply.user.name : 'Unknown User'}}&nbsp;&nbsp;<span class="small release-info">{{ reply.created_since }}</span></h6>
                     <span>{{ reply.body }}</span>
                     <div class="mt-3">
                         <votes :initial_entity="reply" entity_type="comment"></votes>
@@ -75,7 +75,8 @@ export default {
                         data: [
                             ...this.replies.data,
                             ...data.data
-                        ]
+                        ],
+                        // next_page_url: (!this.repliesShowedForTheFirstTime[this.comment.id]) ? `/comments/${this.comment.id}/replies?page=1` : data.next_page_url
                     }
                     if (fetchOnce) {
                         this.repliesShowedForTheFirstTime[this.comment.id] = true;
@@ -106,7 +107,6 @@ export default {
                     ...this.replies.data
                 ]
             }
-            this.comment.replies_count += 1;
             if ((this.replies.data.length > 10) && this.replies.next_page_url) {
                 this.replies.data = this.replies.data.filter(r => {
                     return r.id !== this.replies.data[parseInt((this.replies.data.length - 1))].id
@@ -123,6 +123,7 @@ export default {
                     this.hideAllReplies[this.comment.id] = true;
                 }
             }
+            this.comment.replies_count += 1;
         }
     },
     mounted() {
