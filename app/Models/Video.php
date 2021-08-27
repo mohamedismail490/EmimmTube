@@ -28,6 +28,11 @@ class Video extends Model
         return $this->hasMany(ProgressbarThumbnail::class);
     }
 
+
+    public function scopeLive($query){
+        return $query->where('percentage', 100);
+    }
+
     public function getShortTitleAttribute() {
         return Str::limit($this->title,73,'...');
     }

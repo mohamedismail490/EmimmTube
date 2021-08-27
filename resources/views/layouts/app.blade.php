@@ -45,6 +45,14 @@
                     <ul class="navbar-nav mr-auto">
 
                     </ul>
+                    <form class="form-inline d-inline w-50 mr-auto" style="margin-left: 5rem !important;">
+                        <div class="input-group">
+                            <input class="form-control form-control-sm search_text mr-sm-0" type="search" placeholder="Search EmimmTube..." aria-label="Search" aria-describedby="button-addon2">
+                            <div class="input-group-append">
+                                <button class="btn btn-outline-dark btn-sm" type="button">Search</button>
+                            </div>
+                        </div>
+                    </form>
 
                     <!-- Right Side Of Navbar -->
                     <ul class="navbar-nav ml-auto">
@@ -84,6 +92,7 @@
                             </li>
                         @endguest
                     </ul>
+
                 </div>
             </div>
         </nav>

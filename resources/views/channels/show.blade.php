@@ -68,7 +68,7 @@
                                     </div>
                                     @if(!$channel -> editable())
                                         <br>
-                                        <p class="text-center">{!! $channel -> description !!}</p>
+                                        <p class="text-center w-75 ml-auto mr-auto">{!! $channel -> description !!}</p>
                                     @endif
                                 </div>
                         @if($channel -> editable())

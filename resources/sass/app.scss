@@ -238,7 +238,12 @@ hr {
     box-shadow: 0 0 0 0.2rem transparent;
 }
 
-input.reply-input, input.reply-input:focus, button.load-replies {
+input.search_text {
+    border: none !important;
+    margin-right: 1px !important;
+    box-shadow: 0 0 0 0 transparent !important;
+}
+input.reply-input, input.reply-input:focus, button.load-replies, input.search_text {
     border-top: none !important;
     border-left: none !important;
     border-right: none !important;

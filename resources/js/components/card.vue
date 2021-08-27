@@ -31,7 +31,7 @@
                                         {{ channel.name }}
                                     </a>
                                     <div class="d-flex">
-                                        <span class="release-info mt-n1" style="font-size: medium;">{{ viewsCount }} {{ video.views === 1 ? 'view' : 'views' }} . {{ video.created_since }}</span>
+                                        <span class="release-info mt-n1" style="font-size: small;">{{ viewsCount }} {{ video.views === 1 ? 'view' : 'views' }} . {{ video.created_since }}</span>
                                     </div>
                                 </div>
                             </div>
@@ -43,7 +43,7 @@
                                     <span v-else style="color: #fff; font-size: medium;"
                                           :title="video.title">{{ video.short_title }}</span>
                                 </h6>
-                                <span class="release-info mt-0 mx-n3" style="font-size: medium;">{{ viewsCount }} {{ video.views === 1 ? 'view' : 'views' }} . {{ video.created_since }}</span>
+                                <span class="release-info mt-0 mx-n3" style="font-size: small;">{{ viewsCount }} {{ video.views === 1 ? 'view' : 'views' }} . {{ video.created_since }}</span>
                             </div>
                         </div>
                     </div>

@@ -9,27 +9,15 @@ use App\Http\Controllers\VideoController;
 use App\Http\Controllers\VoteController;
 use App\Http\Controllers\CommentController;
 
-/*
-|--------------------------------------------------------------------------
-| Web Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| contains the "web" middleware group. Now create something great!
-|
-*/
-
-Route::get('/', function () {
-    return view('welcome');
-});
 
 Auth::routes();
 
-Route::get('/home', [HomeController::class, 'index'])->name('home');
+Route::get('/', [HomeController::class, 'index'])->name('home');
 
 Route::resource('channels', ChannelController::class)->only(['show','update']);
 Route::post('channels/{channel}', [ChannelController::class, 'axiosShow']);
+Route::post('videos', [HomeController::class, 'videos']);
+Route::post('videos/recent', [HomeController::class, 'recentVideos']);
 
 Route::group(['prefix' => 'channels', 'middleware' => ['auth']], function () {
     Route::resource('{channel}/subscriptions', SubscriptionController::class)->only(['store','destroy']);

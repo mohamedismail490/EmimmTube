@@ -30,6 +30,14 @@ Vue.component('channel-videos',
     require('./components/channel-videos').default
 )
 
+Vue.component('homepage-videos',
+    require('./components/homepage-videos').default
+)
+
+Vue.component('homepage-recent-videos',
+    require('./components/homepage-recent-videos').default
+)
+
 
 require('./components/channel-uploads');
 
